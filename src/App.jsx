@@ -1,14 +1,17 @@
 /**
  * ============================================================
- *  Earn Wallet — React Frontend (Modern Premium UI) — FIXED
+ *  Earn Wallet — React Frontend (Emerald Premium UI)
  *  Language: Bengali (Bangla)
  *  API: https://www.gajarbotol.site/nirob/api.php
  * ============================================================
- *  FIXES:
- *   1. Loader enhanced with more animations
- *   2. Navigation async lock fixed (waits for API calls)
- *   3. Method selector changed to card-based UI
- *   4. Double-click spam protection on all buttons
+ *  এই আপডেটে যা যোগ হয়েছে:
+ *   1. সম্পূর্ণ ইউনিক কালার থিম (এমারেল্ড + গোল্ড) ও নতুন লোডার ডিজাইন
+ *   2. মিশন সিস্টেম — এডমিন প্যানেল থেকে আনলিমিটেড মিশন যোগ করা যাবে
+ *      (যেমন: ১০ রেফার = ১০০ টাকা বোনাস), এখানে শুধু দেখানো ও claim
+ *      করার UI বসানো হয়েছে
+ *   3. Ad নেটওয়ার্ক — Monetag ও Adsgram দুটোই সাপোর্ট করে, এডমিন শুধু
+ *      network + zone/block id বসিয়ে দিলেই কাজ করবে, কোনো কোড
+ *      পরিবর্তন লাগবে না
  * ============================================================
  */
 
@@ -20,7 +23,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 const API_URL = "https://www.gajarbotol.site/nirob/config.php";
 
 // ============================================================
-//  3D Twemoji icons (only for navigation and small icons)
+//  3D Twemoji icons
 // ============================================================
 const ICONS = {
   home:     "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f3e0.png",
@@ -39,40 +42,43 @@ const ICONS = {
   rocket:   "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f680.png",
   clock:    "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/23f0.png",
   lock:     "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f512.png",
+  trophy:   "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f3c6.png",
+  target:   "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f3af.png",
+  gem:      "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f48e.png",
 };
 
 // ============================================================
-//  GLOBAL CSS — Enhanced Premium Design
+//  GLOBAL CSS — Emerald & Gold Premium Design
 // ============================================================
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
   :root {
-    --bg: #05050e;
-    --surface: #0b0b1a;
-    --surface2: #13132a;
-    --surface3: #1a1a3a;
-    --text: #f0f0fa;
-    --text-dim: #6a6a96;
-    --text-mid: #9494c0;
-    --border: #1a1a3a;
-    --border2: #25254a;
-    --primary: #7c3aed;
-    --primary2: #a78bfa;
-    --primary3: #c4b5fd;
-    --blue: #4f8ef7;
-    --cyan: #06b6d4;
-    --green: #10b981;
+    --bg: #060a08;
+    --surface: #0c1410;
+    --surface2: #121e17;
+    --surface3: #17281f;
+    --text: #eef7f1;
+    --text-dim: #62806e;
+    --text-mid: #95b5a1;
+    --border: #17281f;
+    --border2: #1e352a;
+    --primary: #10b981;
+    --primary2: #34d399;
+    --primary3: #6ee7b7;
+    --gold: #fbbf24;
+    --gold2: #f59e0b;
+    --green: #22c55e;
     --warning: #f59e0b;
     --danger: #ef4444;
-    --grad-a: #7c3aed;
-    --grad-b: #4f8ef7;
-    --grad-c: #a78bfa;
+    --grad-a: #059669;
+    --grad-b: #10b981;
+    --grad-c: #fbbf24;
     --radius-lg: 24px;
     --radius-md: 16px;
     --radius-sm: 12px;
-    --glow-purple: 0 0 60px rgba(124,58,237,0.5);
-    --glow-purple-strong: 0 0 90px rgba(124,58,237,0.7);
+    --glow-emerald: 0 0 60px rgba(16,185,129,0.45);
+    --glow-emerald-strong: 0 0 90px rgba(16,185,129,0.65);
   }
 
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -80,7 +86,7 @@ const css = `
   body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; overflow-x:hidden; }
   #root { max-width:480px; margin:0 auto; min-height:100vh; padding-bottom:100px; position:relative; }
 
-  /* ===================== LOADER — Ultra Premium Enhanced ===================== */
+  /* ===================== LOADER — Gem Orbit ===================== */
   .loader-overlay {
     position:fixed; inset:0; background:var(--bg); z-index:9999;
     display:flex; flex-direction:column;
@@ -89,61 +95,56 @@ const css = `
   }
   .loader-bg-glow {
     position:absolute; inset:0;
-    background: radial-gradient(ellipse at center, rgba(124,58,237,0.25) 0%, transparent 60%);
-    animation: pulseGlowEnhanced 2.5s ease-in-out infinite alternate;
+    background: radial-gradient(ellipse at center, rgba(16,185,129,0.22) 0%, transparent 60%);
+    animation: pulseGlowEmerald 2.6s ease-in-out infinite alternate;
   }
-  @keyframes pulseGlowEnhanced {
-    0% { opacity:0.4; transform:scale(0.8); }
-    100% { opacity:1; transform:scale(1.3); }
+  @keyframes pulseGlowEmerald {
+    0% { opacity:0.35; transform:scale(0.8); }
+    100% { opacity:1; transform:scale(1.25); }
   }
-  .loader-lightning-container {
-    position:relative; z-index:2;
+  .loader-gem-container {
+    position:relative; z-index:2; width:160px; height:160px;
     display:flex; align-items:center; justify-content:center;
   }
-  .lightning-svg {
-    width:140px; height:140px;
-    filter: drop-shadow(0 0 40px rgba(124,58,237,0.8)) drop-shadow(0 0 80px rgba(79,142,247,0.5));
-    animation: lightningRotateEnhanced 3.5s ease-in-out infinite alternate, lightningPulse 2s ease-in-out infinite;
-  }
-  @keyframes lightningRotateEnhanced {
-    0% { transform: rotate(-8deg) scale(0.95); }
-    100% { transform: rotate(8deg) scale(1.12); }
-  }
-  @keyframes lightningPulse {
-    0% { filter: drop-shadow(0 0 40px rgba(124,58,237,0.8)) drop-shadow(0 0 80px rgba(79,142,247,0.5)); }
-    50% { filter: drop-shadow(0 0 60px rgba(124,58,237,1)) drop-shadow(0 0 120px rgba(79,142,247,0.8)); }
-    100% { filter: drop-shadow(0 0 40px rgba(124,58,237,0.8)) drop-shadow(0 0 80px rgba(79,142,247,0.5)); }
-  }
-  /* Spark particles — more active */
-  .spark {
+  .orbit-ring {
     position:absolute; border-radius:50%;
-    background: radial-gradient(circle, rgba(167,139,250,0.9), transparent 70%);
-    animation: sparkFloat 2s ease-in-out infinite alternate;
+    border:1.5px solid rgba(16,185,129,0.25);
   }
-  .spark1 { width:8px; height:8px; top:-30px; right:-20px; animation-delay:0s; }
-  .spark2 { width:6px; height:6px; bottom:-25px; left:-15px; animation-delay:0.5s; }
-  .spark3 { width:10px; height:10px; top:20px; right:-40px; animation-delay:1s; }
-  .spark4 { width:5px; height:5px; bottom:10px; left:-35px; animation-delay:1.5s; }
-  .spark5 { width:7px; height:7px; top:-10px; left:-30px; animation-delay:0.3s; }
-  @keyframes sparkFloat {
-    0% { transform:translate(0,0) scale(0.3); opacity:0.1; }
-    100% { transform:translate(20px,-25px) scale(1.8); opacity:1; }
+  .orbit-ring.r1 { width:160px; height:160px; animation:orbitSpin 4s linear infinite; border-top-color:var(--primary2); }
+  .orbit-ring.r2 { width:120px; height:120px; animation:orbitSpin 3s linear infinite reverse; border-right-color:var(--gold); }
+  .orbit-ring.r3 { width:86px; height:86px; animation:orbitSpin 5.5s linear infinite; border-bottom-color:var(--primary3); }
+  @keyframes orbitSpin {
+    from { transform:rotate(0deg); }
+    to   { transform:rotate(360deg); }
+  }
+  .gem-svg {
+    width:56px; height:56px; position:relative; z-index:2;
+    filter: drop-shadow(0 0 24px rgba(16,185,129,0.9)) drop-shadow(0 0 48px rgba(251,191,36,0.4));
+    animation: gemFloat 2.2s ease-in-out infinite;
+  }
+  @keyframes gemFloat {
+    0%,100% { transform:translateY(0) scale(1); }
+    50% { transform:translateY(-6px) scale(1.06); }
+  }
+  .orbit-dot {
+    position:absolute; width:7px; height:7px; border-radius:50%;
+    background:var(--gold); box-shadow:0 0 12px rgba(251,191,36,0.9);
+    top:-3.5px; left:50%; margin-left:-3.5px;
   }
 
-  /* Loader Progress Bar */
   .loader-progress-wrap {
     position:relative; z-index:2;
-    margin-top:50px;
+    margin-top:46px;
     display:flex; flex-direction:column; align-items:center; gap:16px;
     width:85%; max-width:280px;
   }
   .loader-progress-bar {
     width:100%; height:8px;
-    background:rgba(255,255,255,0.08);
+    background:rgba(255,255,255,0.06);
     border-radius:10px;
     overflow:hidden;
-    box-shadow:inset 0 2px 4px rgba(0,0,0,0.6), 0 0 20px rgba(124,58,237,0.2);
-    border:1px solid rgba(124,58,237,0.15);
+    box-shadow:inset 0 2px 4px rgba(0,0,0,0.6), 0 0 20px rgba(16,185,129,0.15);
+    border:1px solid rgba(16,185,129,0.15);
   }
   .loader-progress-fill {
     height:100%;
@@ -151,7 +152,7 @@ const css = `
     background-size:200% 100%;
     border-radius:10px;
     transition:width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    box-shadow:0 0 25px rgba(124,58,237,0.5), inset 0 1px 2px rgba(255,255,255,0.2);
+    box-shadow:0 0 25px rgba(16,185,129,0.5), inset 0 1px 2px rgba(255,255,255,0.2);
     width:0%;
     animation: gradientShift 2s linear infinite;
   }
@@ -164,7 +165,7 @@ const css = `
     color:var(--text-mid); letter-spacing:0.8px;
   }
   .loader-progress-text span {
-    color:#fff; font-weight:900; font-size:1.1rem;
+    color:var(--gold); font-weight:900; font-size:1.1rem;
   }
 
   /* ===================== TOAST ===================== */
@@ -193,7 +194,7 @@ const css = `
   .user-avatar img {
     width:44px; height:44px; border-radius:50%;
     border:2px solid var(--primary); object-fit:cover;
-    box-shadow:0 0 0 3px rgba(124,58,237,0.25), 0 0 30px rgba(124,58,237,0.15);
+    box-shadow:0 0 0 3px rgba(16,185,129,0.22), 0 0 30px rgba(16,185,129,0.15);
   }
   .avatar-status {
     position:absolute; bottom:1px; right:1px; width:12px; height:12px;
@@ -201,8 +202,8 @@ const css = `
     animation:statusPulse 2s ease-in-out infinite;
   }
   @keyframes statusPulse {
-    0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.4)}
-    50%{box-shadow:0 0 0 4px rgba(16,185,129,0)}
+    0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0.4)}
+    50%{box-shadow:0 0 0 4px rgba(34,197,94,0)}
   }
   .user-info h3 { font-size:0.95rem; font-weight:700; }
   .user-info p { font-size:0.7rem; color:var(--text-dim); margin-top:1px; }
@@ -229,29 +230,29 @@ const css = `
     to   { opacity:1; transform:translateY(0) scale(1); }
   }
 
-  /* ===================== BALANCE CARD — Ultra Bright Glow ===================== */
+  /* ===================== BALANCE CARD ===================== */
   .balance-card {
     margin: 0 16px 20px;
-    background: linear-gradient(145deg, #0d0d2b 0%, #1a0a3a 40%, #0a1a4a 80%, #0d0d2b 100%);
-    border:1px solid rgba(124,58,237,0.5);
+    background: linear-gradient(145deg, #0b1a12 0%, #0a2417 40%, #1a1a0a 80%, #0b1a12 100%);
+    border:1px solid rgba(16,185,129,0.45);
     border-radius:var(--radius-lg); padding:28px 24px 24px;
     position:relative; overflow:hidden;
-    box-shadow: var(--glow-purple), 0 0 0 1px rgba(124,58,237,0.2) inset;
+    box-shadow: var(--glow-emerald), 0 0 0 1px rgba(16,185,129,0.18) inset;
     animation: cardGlowIn 0.9s cubic-bezier(0.34,1.56,0.64,1) both;
     transition:box-shadow 0.6s;
   }
   .balance-card:hover {
-    box-shadow: var(--glow-purple-strong), 0 0 0 2px rgba(124,58,237,0.3) inset;
+    box-shadow: var(--glow-emerald-strong), 0 0 0 2px rgba(16,185,129,0.3) inset;
   }
   @keyframes cardGlowIn {
-    from { transform:scale(0.85) translateY(30px); opacity:0; box-shadow:0 0 0 rgba(124,58,237,0); }
-    to   { transform:scale(1) translateY(0); opacity:1; box-shadow:var(--glow-purple); }
+    from { transform:scale(0.85) translateY(30px); opacity:0; box-shadow:0 0 0 rgba(16,185,129,0); }
+    to   { transform:scale(1) translateY(0); opacity:1; box-shadow:var(--glow-emerald); }
   }
   .bc-glow {
     position:absolute; inset:0; pointer-events:none;
-    background: radial-gradient(ellipse at 20% 10%, rgba(124,58,237,0.4) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 90%, rgba(79,142,247,0.3) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 50%, rgba(167,139,250,0.1) 0%, transparent 40%);
+    background: radial-gradient(ellipse at 20% 10%, rgba(16,185,129,0.35) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 90%, rgba(251,191,36,0.22) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(110,231,183,0.1) 0%, transparent 40%);
     animation: glowDrift 7s ease-in-out infinite alternate;
   }
   @keyframes glowDrift {
@@ -260,28 +261,28 @@ const css = `
   }
   .bc-grid {
     position:absolute; inset:0; pointer-events:none;
-    background-image: linear-gradient(rgba(124,58,237,0.06) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(124,58,237,0.06) 1px, transparent 1px);
+    background-image: linear-gradient(rgba(16,185,129,0.06) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(16,185,129,0.06) 1px, transparent 1px);
     background-size: 28px 28px;
     opacity:0.6;
   }
   .bc-label {
     font-size:0.68rem; text-transform:uppercase; letter-spacing:3px;
-    color:rgba(167,139,250,0.8); font-weight:700; margin-bottom:10px;
+    color:rgba(110,231,183,0.8); font-weight:700; margin-bottom:10px;
     position:relative; z-index:1;
   }
   .bc-amount {
     font-size:3.2rem; font-weight:900; color:#fff; letter-spacing:-2px; line-height:1;
     position:relative; z-index:1;
-    text-shadow:0 0 60px rgba(124,58,237,0.3);
+    text-shadow:0 0 60px rgba(16,185,129,0.3);
   }
   .bc-sym { font-size:1.3rem; font-weight:600; opacity:0.7; }
   .bc-footer {
     display:flex; gap:20px; margin-top:22px; position:relative; z-index:1;
-    padding-top:16px; border-top:1px solid rgba(124,58,237,0.2);
+    padding-top:16px; border-top:1px solid rgba(16,185,129,0.18);
   }
   .bc-mini span:first-child {
-    font-size:0.65rem; color:rgba(167,139,250,0.6); font-weight:600; display:block;
+    font-size:0.65rem; color:rgba(110,231,183,0.6); font-weight:600; display:block;
   }
   .bc-mini span:last-child { font-size:0.95rem; color:#fff; font-weight:700; }
 
@@ -314,8 +315,8 @@ const css = `
   }
   .stat-card:hover {
     transform:translateY(-6px) scale(1.02);
-    border-color:rgba(124,58,237,0.4);
-    box-shadow:0 10px 30px rgba(124,58,237,0.1);
+    border-color:rgba(16,185,129,0.4);
+    box-shadow:0 10px 30px rgba(16,185,129,0.1);
   }
   .stat-card:active { transform:scale(0.96) translateY(0); }
   .stat-icon-wrap {
@@ -324,10 +325,10 @@ const css = `
     margin-bottom:12px;
   }
   .stat-icon-wrap img { width:22px; height:22px; }
-  .stat-icon-wrap.blue { background:rgba(79,142,247,0.12); }
-  .stat-icon-wrap.purple { background:rgba(124,58,237,0.12); }
-  .stat-icon-wrap.green { background:rgba(16,185,129,0.12); }
-  .stat-icon-wrap.orange { background:rgba(245,158,11,0.12); }
+  .stat-icon-wrap.blue { background:rgba(34,211,238,0.12); }
+  .stat-icon-wrap.purple { background:rgba(16,185,129,0.12); }
+  .stat-icon-wrap.green { background:rgba(34,197,94,0.12); }
+  .stat-icon-wrap.orange { background:rgba(251,191,36,0.12); }
   .stat-card p { font-size:0.7rem; color:var(--text-dim); font-weight:500; margin-bottom:5px; }
   .stat-card h4 { font-size:1.4rem; font-weight:800; letter-spacing:-0.5px; color:var(--text); }
 
@@ -344,15 +345,15 @@ const css = `
   .ref-top { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
   .ref-icon {
     width:44px; height:44px; border-radius:14px;
-    background:rgba(124,58,237,0.14); border:1px solid rgba(124,58,237,0.2);
+    background:rgba(16,185,129,0.14); border:1px solid rgba(16,185,129,0.2);
     display:flex; align-items:center; justify-content:center; flex-shrink:0;
   }
   .ref-icon img { width:24px; height:24px; }
   .ref-title h4 { font-size:0.95rem; font-weight:700; }
   .ref-badge {
     display:inline-flex; align-items:center; gap:4px;
-    background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.25);
-    color:var(--green); padding:3px 10px; border-radius:20px;
+    background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.28);
+    color:var(--gold); padding:3px 10px; border-radius:20px;
     font-size:0.7rem; font-weight:700; margin-top:4px;
     animation:badgePop 0.5s cubic-bezier(0.34,1.56,0.64,1) both 0.3s;
   }
@@ -369,7 +370,7 @@ const css = `
     color:#fff; border:none; padding:9px 15px; border-radius:9px;
     font-size:0.8rem; font-weight:600; cursor:pointer;
     display:flex; align-items:center; gap:6px; transition:0.2s; flex-shrink:0;
-    box-shadow:0 3px 12px rgba(124,58,237,0.25);
+    box-shadow:0 3px 12px rgba(16,185,129,0.25);
   }
   .btn-copy img { width:14px; height:14px; filter:brightness(10); }
   .btn-copy:active { transform:scale(0.93); opacity:0.85; }
@@ -379,7 +380,7 @@ const css = `
     background: linear-gradient(135deg, var(--grad-a), var(--grad-b));
     color:#fff; font-size:0.92rem; font-weight:700; cursor:pointer;
     display:flex; align-items:center; justify-content:center; gap:8px;
-    transition:0.2s; box-shadow:0 4px 20px rgba(124,58,237,0.35);
+    transition:0.2s; box-shadow:0 4px 20px rgba(16,185,129,0.35);
   }
   .btn-share img { width:18px; height:18px; filter:brightness(10); }
   .btn-share:active { transform:scale(0.97); opacity:0.9; }
@@ -396,7 +397,7 @@ const css = `
   .ad-box:active { transform:scale(0.97); }
   .ad-icon {
     width:48px; height:48px; border-radius:14px;
-    background:rgba(79,142,247,0.1); border:1px solid rgba(79,142,247,0.15);
+    background:rgba(34,211,238,0.1); border:1px solid rgba(34,211,238,0.15);
     display:flex; align-items:center; justify-content:center;
     margin:0 auto 12px;
   }
@@ -412,7 +413,7 @@ const css = `
     color:#fff; border:none; padding:10px 0; width:100%;
     border-radius:10px; font-size:0.83rem; font-weight:600; cursor:pointer;
     display:flex; align-items:center; justify-content:center; gap:6px;
-    transition:0.2s; box-shadow:0 3px 12px rgba(124,58,237,0.2);
+    transition:0.2s; box-shadow:0 3px 12px rgba(16,185,129,0.2);
   }
   .ad-btn img { width:14px; height:14px; filter:brightness(10); }
   .ad-btn:active:not(:disabled) { transform:scale(0.96); opacity:0.85; }
@@ -445,31 +446,69 @@ const css = `
   }
   .btn-task-start {
     background: linear-gradient(135deg, var(--grad-a), var(--grad-b));
-    color:#fff; box-shadow:0 3px 12px rgba(124,58,237,0.22);
+    color:#fff; box-shadow:0 3px 12px rgba(16,185,129,0.22);
   }
   .btn-task-start:disabled { opacity:0.6; cursor:not-allowed; }
   .btn-task-wait { background:var(--surface2); color:var(--text-dim); cursor:not-allowed; border:1px solid var(--border); }
   .btn-task-claim {
-    background: linear-gradient(135deg, var(--green), #059669);
-    color:#fff; animation:claimPulse 1.2s ease-in-out infinite;
-    box-shadow:0 3px 14px rgba(16,185,129,0.3);
+    background: linear-gradient(135deg, var(--gold2), var(--gold));
+    color:#0c1410; animation:claimPulse 1.2s ease-in-out infinite;
+    box-shadow:0 3px 14px rgba(251,191,36,0.3);
   }
   .btn-task-claim:disabled { opacity:0.6; cursor:not-allowed; animation:none; }
   @keyframes claimPulse {
-    0%,100%{box-shadow:0 3px 14px rgba(16,185,129,0.3)}
-    50%{box-shadow:0 4px 22px rgba(16,185,129,0.6)}
+    0%,100%{box-shadow:0 3px 14px rgba(251,191,36,0.3)}
+    50%{box-shadow:0 4px 22px rgba(251,191,36,0.6)}
   }
 
-  /* ===================== METHOD SELECTOR — Card-Based ===================== */
-  .method-selector-wrap {
-    margin-bottom:16px;
+  /* ===================== MISSIONS ===================== */
+  .mission-list { display:flex; flex-direction:column; gap:12px; }
+  .mission-card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius-md); padding:16px;
+    animation:fadeUp 0.5s ease both; position:relative; overflow:hidden;
   }
+  .mission-card.done { border-color:rgba(251,191,36,0.35); }
+  .mission-top { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .mission-icon {
+    width:42px; height:42px; border-radius:13px; flex-shrink:0;
+    background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.22);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .mission-icon img { width:22px; height:22px; }
+  .mission-info h4 { font-size:0.9rem; font-weight:700; margin-bottom:3px; }
+  .mission-info p { font-size:0.72rem; color:var(--text-dim); }
+  .mission-progress-bar {
+    width:100%; height:7px; background:rgba(255,255,255,0.06);
+    border-radius:10px; overflow:hidden; margin-bottom:10px;
+    border:1px solid var(--border2);
+  }
+  .mission-progress-fill {
+    height:100%; border-radius:10px;
+    background:linear-gradient(90deg, var(--grad-a), var(--grad-c));
+    transition:width 0.4s ease;
+  }
+  .mission-bottom { display:flex; justify-content:space-between; align-items:center; }
+  .mission-count { font-size:0.72rem; color:var(--text-mid); font-weight:600; }
+  .btn-mission-claim {
+    padding:8px 16px; border-radius:10px; font-size:0.78rem; font-weight:700;
+    border:none; cursor:pointer; transition:0.2s;
+    background:linear-gradient(135deg, var(--gold2), var(--gold));
+    color:#0c1410; box-shadow:0 3px 12px rgba(251,191,36,0.28);
+  }
+  .btn-mission-claim:disabled { opacity:0.55; cursor:not-allowed; box-shadow:none; }
+  .mission-claimed-badge {
+    font-size:0.72rem; font-weight:700; color:var(--green);
+    display:flex; align-items:center; gap:5px;
+  }
+  .mission-claimed-badge img { width:14px; height:14px; }
+
+  /* ===================== METHOD SELECTOR ===================== */
+  .method-selector-wrap { margin-bottom:16px; }
   .method-label {
     font-size:0.68rem; color:var(--text-dim); font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px; display:block;
   }
-  .method-grid {
-    display:grid; grid-template-columns:1fr 1fr; gap:10px;
-  }
+  .method-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .method-card {
     background:var(--surface); border:2px solid var(--border);
     border-radius:var(--radius-md); padding:16px 12px; text-align:center;
@@ -477,14 +516,14 @@ const css = `
     animation:fadeUp 0.5s ease both;
   }
   .method-card:hover {
-    border-color:rgba(124,58,237,0.3);
+    border-color:rgba(16,185,129,0.3);
     transform:translateY(-2px);
-    box-shadow:0 4px 16px rgba(124,58,237,0.1);
+    box-shadow:0 4px 16px rgba(16,185,129,0.1);
   }
   .method-card.active {
-    background:rgba(124,58,237,0.1);
+    background:rgba(16,185,129,0.1);
     border-color:var(--primary);
-    box-shadow:0 0 30px rgba(124,58,237,0.3);
+    box-shadow:0 0 30px rgba(16,185,129,0.28);
   }
   .method-card:active { transform:scale(0.97); }
   .method-card h5 { font-size:0.88rem; font-weight:700; color:var(--text); margin-bottom:6px; }
@@ -495,16 +534,12 @@ const css = `
     display:flex; align-items:center; justify-content:center;
     opacity:0; transition:0.2s; transform:scale(0);
   }
-  .method-card.active .method-check {
-    opacity:1; transform:scale(1);
-  }
-  .method-check::after {
-    content:'✓'; color:#fff; font-size:12px; font-weight:800;
-  }
+  .method-card.active .method-check { opacity:1; transform:scale(1); }
+  .method-check::after { content:'✓'; color:#fff; font-size:12px; font-weight:800; }
 
   /* ===================== WITHDRAW ===================== */
   .info-banner {
-    background:rgba(124,58,237,0.06); border:1px solid rgba(124,58,237,0.18);
+    background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.18);
     border-radius:var(--radius-sm); padding:14px 16px;
     display:flex; align-items:flex-start; gap:12px; margin-bottom:16px;
   }
@@ -519,14 +554,14 @@ const css = `
     border-radius:var(--radius-sm); color:var(--text); font-size:0.93rem;
     font-weight:500; outline:none; transition:0.2s;
   }
-  .form-inp:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(124,58,237,0.1); }
+  .form-inp:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(16,185,129,0.1); }
   .form-inp::placeholder { color:var(--text-dim); opacity:0.8; }
   .btn-submit {
     width:100%; padding:16px; border:none; border-radius:var(--radius-sm);
     background: linear-gradient(135deg, var(--grad-a), var(--grad-b));
     color:#fff; font-size:0.97rem; font-weight:700; cursor:pointer;
     margin-top:6px; display:flex; align-items:center; justify-content:center; gap:8px;
-    transition:0.2s; box-shadow:0 4px 20px rgba(124,58,237,0.3);
+    transition:0.2s; box-shadow:0 4px 20px rgba(16,185,129,0.3);
   }
   .btn-submit:active:not(:disabled) { transform:scale(0.98); opacity:0.9; }
   .btn-submit:disabled { background:var(--surface2); box-shadow:none; cursor:not-allowed; color:var(--text-dim); }
@@ -555,29 +590,29 @@ const css = `
   .hist-amt { font-size:0.92rem; font-weight:700; display:block; margin-bottom:4px; }
   .hist-badge { font-size:0.62rem; padding:2px 8px; border-radius:6px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; }
   .status-pending  { background:rgba(245,158,11,0.12); color:var(--warning); }
-  .status-completed{ background:rgba(16,185,129,0.12); color:var(--green); }
+  .status-completed{ background:rgba(34,197,94,0.12); color:var(--green); }
   .status-rejected { background:rgba(239,68,68,0.12); color:var(--danger); }
 
   /* ===================== BOTTOM NAV ===================== */
   .bottom-nav {
     position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
     width:calc(100% - 30px); max-width:420px;
-    background:rgba(12,12,26,0.92); border:1px solid var(--border2);
-    padding:6px 8px; border-radius:100px; display:flex; justify-content:space-around;
+    background:rgba(10,18,14,0.92); border:1px solid var(--border2);
+    padding:6px 6px; border-radius:100px; display:flex; justify-content:space-around;
     z-index:100; box-shadow:0 12px 48px rgba(0,0,0,0.6);
     backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
   }
   .nav-item {
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    width:72px; height:56px; cursor:pointer; transition:0.25s; gap:3px;
+    width:64px; height:56px; cursor:pointer; transition:0.25s; gap:3px;
     border-radius:50px; position:relative;
   }
   .nav-item .nav-img {
-    width:28px; height:28px; object-fit:contain;
+    width:26px; height:26px; object-fit:contain;
     filter:grayscale(1) brightness(0.35); transition:0.25s;
   }
-  .nav-item span { font-size:0.59rem; font-weight:600; color:var(--text-dim); opacity:0; transition:0.2s; }
-  .nav-item.active { background:rgba(124,58,237,0.08); }
+  .nav-item span { font-size:0.56rem; font-weight:600; color:var(--text-dim); opacity:0; transition:0.2s; }
+  .nav-item.active { background:rgba(16,185,129,0.08); }
   .nav-item.active .nav-img { filter:none; transform:scale(1.1); }
   .nav-item.active span { opacity:1; color:var(--primary2); }
   .nav-dot {
@@ -597,7 +632,6 @@ const css = `
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:4px; }
 
-  /* ===================== UTILITY — fadeUp ===================== */
   @keyframes fadeUp {
     from { opacity:0; transform:translateY(12px); }
     to   { opacity:1; transform:translateY(0); }
@@ -621,8 +655,8 @@ const tg = window.Telegram?.WebApp || {
 
 tg.ready();
 tg.expand();
-tg.setHeaderColor?.('#05050e');
-tg.setBackgroundColor?.('#05050e');
+tg.setHeaderColor?.('#060a08');
+tg.setBackgroundColor?.('#060a08');
 
 const INIT_DATA = tg.initData || '';
 
@@ -654,44 +688,28 @@ async function apiCall(action, method = 'GET', body = null) {
 }
 
 // ============================================================
-//  Loader — Ultra Premium with Enhanced Progress
+//  Loader — Gem Orbit (Unique)
 // ============================================================
 function Loader({ hiding, progress }) {
     return (
         <div className="loader-overlay" style={hiding ? { opacity: 0, transform: 'scale(1.05)' } : {}}>
             <div className="loader-bg-glow" />
-            <div className="loader-lightning-container">
-                <svg className="lightning-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <div className="loader-gem-container">
+                <div className="orbit-ring r1"><div className="orbit-dot" /></div>
+                <div className="orbit-ring r2"><div className="orbit-dot" /></div>
+                <div className="orbit-ring r3"><div className="orbit-dot" /></div>
+                <svg className="gem-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <defs>
-                        <linearGradient id="boltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="#a78bfa" />
-                            <stop offset="50%" stopColor="#7c3aed" />
-                            <stop offset="100%" stopColor="#4f8ef7" />
+                        <linearGradient id="gemGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#6ee7b7" />
+                            <stop offset="55%" stopColor="#10b981" />
+                            <stop offset="100%" stopColor="#fbbf24" />
                         </linearGradient>
-                        <filter id="glowFilter" x="-50%" y="-50%" width="200%" height="200%">
-                            <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
-                            <feMerge>
-                                <feMergeNode in="blur" />
-                                <feMergeNode in="SourceGraphic" />
-                            </feMerge>
-                        </filter>
                     </defs>
-                    <path d="M50 5 L20 55 L45 55 L35 95 L75 40 L50 40 L60 5 Z"
-                          fill="url(#boltGrad)"
-                          filter="url(#glowFilter)"
-                          stroke="rgba(167,139,250,0.3)"
-                          strokeWidth="1"
-                    />
-                    <path d="M50 10 L25 50 L45 50 L38 85 L68 40 L48 40 L56 10 Z"
-                          fill="rgba(255,255,255,0.15)"
-                    />
-                    <circle cx="50" cy="50" r="30" fill="rgba(124,58,237,0.1)" filter="blur(10px)" />
+                    <path d="M50 8 L80 30 L68 90 L32 90 L20 30 Z" fill="url(#gemGrad)" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
+                    <path d="M50 8 L80 30 L50 45 Z" fill="rgba(255,255,255,0.22)" />
+                    <path d="M20 30 L50 45 L32 90 Z" fill="rgba(0,0,0,0.12)" />
                 </svg>
-                <div className="spark spark1" />
-                <div className="spark spark2" />
-                <div className="spark spark3" />
-                <div className="spark spark4" />
-                <div className="spark spark5" />
             </div>
 
             <div className="loader-progress-wrap">
@@ -862,7 +880,8 @@ function EarnPage({ appState, onAdDone, onTaskBegin }) {
 }
 
 // ============================================================
-//  Ad Box
+//  Ad Box — supports Monetag & Adsgram, controlled purely by
+//  admin-configured `network` + `id` (zone id / block id)
 // ============================================================
 function AdBox({ slot, index, done, limit, onAdDone }) {
     const [loading, setLoading] = useState(false);
@@ -876,10 +895,17 @@ function AdBox({ slot, index, done, limit, onAdDone }) {
             tg.HapticFeedback.impactOccurred('light');
             try {
                 let providerFunc;
+
                 if (slot.network === 'monetag' && window[`show_${slot.id}`]) {
                     providerFunc = window[`show_${slot.id}`]();
-                } else if (slot.network === 'gigapub' && window.showGiga) {
-                    providerFunc = window.showGiga();
+
+                } else if (slot.network === 'adsgram' && window.Adsgram) {
+                    if (!window.__adsgramControllers) window.__adsgramControllers = {};
+                    if (!window.__adsgramControllers[slot.id]) {
+                        window.__adsgramControllers[slot.id] = window.Adsgram.init({ blockId: slot.id });
+                    }
+                    providerFunc = window.__adsgramControllers[slot.id].show();
+
                 } else {
                     alert('বিজ্ঞাপন নেটওয়ার্ক লোড হচ্ছে। আবার চেষ্টা করুন।');
                     setLoading(false);
@@ -997,7 +1023,78 @@ function TaskItem({ id, task, history, sym, now, onBegin }) {
 }
 
 // ============================================================
-//  Withdraw Page — With Card-Based Method Selector
+//  Mission Page — Admin panel থেকে আনলিমিটেড মিশন কন্ট্রোল হয়,
+//  এখানে শুধু progress দেখানো ও claim করার UI
+// ============================================================
+function MissionPage({ appState, onClaimMission }) {
+    const cfg = appState.config;
+    const u   = appState.user;
+    const sym = cfg.currencySymbol || 'টাকা';
+    const missions = cfg.missions || {};
+    const claimed = u.claimedMissions || {};
+    const refs = u.referrals || 0;
+    const ids = Object.keys(missions);
+
+    return (
+        <div className="page active">
+            <div className="sec-head">
+                <img src={ICONS.trophy} alt="" /> মিশন ও বোনাস
+            </div>
+            {ids.length === 0 ? (
+                <div className="empty-state">
+                    <img src={ICONS.target} alt="" />
+                    বর্তমানে কোনো মিশন উপলব্ধ নেই।
+                </div>
+            ) : (
+                <div className="mission-list">
+                    {ids.map(id => {
+                        const m = missions[id];
+                        const required = m.requiredReferrals || 0;
+                        const isClaimed = !!claimed[id];
+                        const isEligible = refs >= required && !isClaimed;
+                        const pct = required > 0 ? Math.min(100, Math.round((refs / required) * 100)) : 100;
+                        return (
+                            <div className={`mission-card ${isClaimed ? 'done' : ''}`} key={id}>
+                                <div className="mission-top">
+                                    <div className="mission-icon">
+                                        <img src={ICONS.target} alt="" />
+                                    </div>
+                                    <div className="mission-info">
+                                        <h4>{m.title || 'মিশন'}</h4>
+                                        <p>{required} জন রেফার করলে +{m.bonus} {sym} বোনাস</p>
+                                    </div>
+                                </div>
+                                <div className="mission-progress-bar">
+                                    <div className="mission-progress-fill" style={{ width: `${pct}%` }} />
+                                </div>
+                                <div className="mission-bottom">
+                                    <span className="mission-count">{Math.min(refs, required)}/{required} রেফারেল</span>
+                                    {isClaimed ? (
+                                        <span className="mission-claimed-badge">
+                                            <img src={ICONS.check} alt="" /> সংগ্রহ করা হয়েছে
+                                        </span>
+                                    ) : (
+                                        <button
+                                            className="btn-mission-claim"
+                                            disabled={!isEligible}
+                                            onClick={() => onClaimMission(id)}
+                                        >
+                                            বোনাস নিন
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+            <div style={{ height: 10 }} />
+        </div>
+    );
+}
+
+// ============================================================
+//  Withdraw Page
 // ============================================================
 function WithdrawPage({ appState, onWithdraw }) {
     const cfg    = appState.config;
@@ -1078,7 +1175,6 @@ function WithdrawPage({ appState, onWithdraw }) {
                 </div>
             </div>
 
-            {/* Card-Based Method Selector */}
             {methods.length > 0 && (
                 <div className="method-selector-wrap">
                     <span className="method-label">পেমেন্ট পদ্ধতি নির্বাচন করুন</span>
@@ -1173,7 +1269,7 @@ export default function App() {
             firstName: tgUser.first_name,
             photoUrl: tgUser.photo_url || '',
             balance: 0, totalEarned: 0, referrals: 0,
-            dailyAds: {}, taskHistory: {}, completedTaskCount: 0,
+            dailyAds: {}, taskHistory: {}, claimedMissions: {}, completedTaskCount: 0,
             lastActive: '',
         },
         config: {},
@@ -1226,8 +1322,9 @@ export default function App() {
                         user: {
                             ...prev.user,
                             ...(user || {}),
-                            dailyAds:    user?.dailyAds    || prev.user.dailyAds    || {},
-                            taskHistory: user?.taskHistory || prev.user.taskHistory || {},
+                            dailyAds:        user?.dailyAds        || prev.user.dailyAds        || {},
+                            taskHistory:     user?.taskHistory     || prev.user.taskHistory     || {},
+                            claimedMissions: user?.claimedMissions || prev.user.claimedMissions || {},
                         },
                         config:  config || prev.config,
                         history: hist   || prev.history,
@@ -1238,7 +1335,6 @@ export default function App() {
 
                 if (config?.adSlots) loadAdScripts(config.adSlots);
 
-                // Show 100% and then hide loader
                 setLoadingProgress(100);
                 setTimeout(() => {
                     setLoaderHide(true);
@@ -1260,6 +1356,8 @@ export default function App() {
         return () => {};
     }, []); // eslint-disable-line
 
+    // এডমিন যে network + zone/block id (config.adSlots) বসাবে তার
+    // ভিত্তিতেই স্ক্রিপ্ট লোড হয় — Monetag ও Adsgram দুটোই সাপোর্টেড
     function loadAdScripts(adSlots) {
         adSlots.forEach(s => {
             if (s.network === 'monetag' && !document.querySelector(`script[data-zone="${s.id}"]`)) {
@@ -1267,6 +1365,12 @@ export default function App() {
                 sc.src = '//libtl.com/sdk.js';
                 sc.dataset.zone = s.id;
                 sc.dataset.sdk  = `show_${s.id}`;
+                document.body.appendChild(sc);
+            }
+            if (s.network === 'adsgram' && !window.__adsgramSdkLoaded) {
+                window.__adsgramSdkLoaded = true;
+                const sc = document.createElement('script');
+                sc.src = 'https://sad.adsgram.ai/js/sad.min.js';
                 document.body.appendChild(sc);
             }
         });
@@ -1335,6 +1439,35 @@ export default function App() {
         tg.HapticFeedback.notificationOccurred('success');
     }
 
+    // ===== MISSION BONUS CLAIM =====
+    const missionLock = useRef(false);
+    async function handleClaimMission(missionId) {
+        if (missionLock.current) return;
+        missionLock.current = true;
+        const res = await apiCall('claimMission', 'POST', { missionId });
+        missionLock.current = false;
+        if (!res || res.error) {
+            showToast('error', res?.error || 'মিশন দাবি ব্যর্থ হয়েছে।');
+            return;
+        }
+        const bonus = res.bonus;
+        setAppState(prev => {
+            const next = {
+                ...prev,
+                user: {
+                    ...prev.user,
+                    balance: res.newBalance,
+                    totalEarned: (prev.user.totalEarned || 0) + bonus,
+                    claimedMissions: { ...(prev.user.claimedMissions || {}), [missionId]: Date.now() },
+                },
+            };
+            saveLocal(next);
+            return next;
+        });
+        showToast('success', `মিশন সম্পন্ন! +${bonus} ${appState.config.currencySymbol || 'টাকা'} বোনাস।`);
+        tg.HapticFeedback.notificationOccurred('success');
+    }
+
     // ===== WITHDRAW =====
     async function handleWithdraw(payload) {
         const rData = await apiCall('withdraw', 'POST', payload);
@@ -1381,20 +1514,20 @@ export default function App() {
         else showToast('warning', 'সাপোর্ট লিংক কনফিগার করা নেই।');
     }
 
-    // ===== FIXED NAVIGATION WITH ASYNC LOCK =====
+    // ===== NAVIGATION WITH ASYNC LOCK =====
     async function handleNav(page) {
         if (navLock.current) return;
         navLock.current = true;
         setActivePage(page);
         try { tg.HapticFeedback.impactOccurred('light'); } catch {}
-        
+
         if (page === 'withdraw') {
             const data = await apiCall('getHistory', 'POST', { id: appState.user.id });
             if (data) {
                 setAppState(prev => { const n = { ...prev, history: data }; saveLocal(n); return n; });
             }
         }
-        
+
         setTimeout(() => { navLock.current = false; }, 400);
     }
 
@@ -1412,12 +1545,11 @@ export default function App() {
 
             {appReady && (
                 <>
-                    {/* Top Nav */}
                     <header className="top-nav">
                         <div className="user-pill">
                             <div className="user-avatar">
                                 <img
-                                    src={u.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.firstName||'U')}&background=7c3aed&color=fff&size=88`}
+                                    src={u.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.firstName||'U')}&background=10b981&color=fff&size=88`}
                                     alt={u.firstName}
                                 />
                                 <div className="avatar-status" />
@@ -1433,7 +1565,6 @@ export default function App() {
                         </button>
                     </header>
 
-                    {/* Balance Card — only on home */}
                     {activePage === 'home' && (
                         <div className="balance-card">
                             <div className="bc-glow" />
@@ -1460,18 +1591,18 @@ export default function App() {
                         </div>
                     )}
 
-                    {/* Pages */}
                     <main>
                         {activePage === 'home'     && <HomePage     appState={appState} onCopy={handleCopy} onShare={handleShare} />}
                         {activePage === 'earn'     && <EarnPage     appState={appState} onAdDone={handleAdDone} onTaskBegin={handleTaskBegin} />}
+                        {activePage === 'mission'  && <MissionPage  appState={appState} onClaimMission={handleClaimMission} />}
                         {activePage === 'withdraw' && <WithdrawPage appState={appState} onWithdraw={handleWithdraw} />}
                     </main>
 
-                    {/* Bottom Nav */}
                     <nav className="bottom-nav" aria-label="প্রধান নেভিগেশন">
                         {[
                             { page:'home',     icon:ICONS.home,     label:'হোম' },
                             { page:'earn',     icon:ICONS.earn,     label:'আয়' },
+                            { page:'mission',  icon:ICONS.trophy,   label:'মিশন' },
                             { page:'withdraw', icon:ICONS.withdraw, label:'উত্তোলন' },
                         ].map(({ page, icon, label }) => (
                             <div
