@@ -1,11 +1,11 @@
 /**
  * ============================================================
- *  Earn Wallet — React Frontend (Emerald Premium UI)
+ *  Earn Wallet — React Frontend (Royal Violet Premium UI)
  *  Language: Bengali (Bangla)
  *  API: https://www.gajarbotol.site/nirob/api.php
  * ============================================================
  *  এই আপডেটে যা যোগ হয়েছে:
- *   1. সম্পূর্ণ ইউনিক কালার থিম (এমারেল্ড + গোল্ড) ও নতুন লোডার ডিজাইন
+ *   1. সম্পূর্ণ ইউনিক কালার থিম (রয়েল ভায়োলেট + গোল্ড) ও নতুন লোডার ডিজাইন
  *   2. মিশন সিস্টেম — এডমিন প্যানেল থেকে আনলিমিটেড মিশন যোগ করা যাবে
  *      (যেমন: ১০ রেফার = ১০০ টাকা বোনাস), এখানে শুধু দেখানো ও claim
  *      করার UI বসানো হয়েছে
@@ -48,45 +48,52 @@ const ICONS = {
 };
 
 // ============================================================
-//  GLOBAL CSS — Emerald & Gold Premium Design
+//  GLOBAL CSS — Royal Violet & Gold Premium Design
 // ============================================================
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
   :root {
-    --bg: #060a08;
-    --surface: #0c1410;
-    --surface2: #121e17;
-    --surface3: #17281f;
-    --text: #eef7f1;
-    --text-dim: #62806e;
-    --text-mid: #95b5a1;
-    --border: #17281f;
-    --border2: #1e352a;
-    --primary: #10b981;
-    --primary2: #34d399;
-    --primary3: #6ee7b7;
-    --gold: #fbbf24;
-    --gold2: #f59e0b;
-    --green: #22c55e;
-    --warning: #f59e0b;
-    --danger: #ef4444;
-    --grad-a: #059669;
-    --grad-b: #10b981;
-    --grad-c: #fbbf24;
+    --bg: #0b0a14;
+    --surface: #141224;
+    --surface2: #1f1b33;
+    --surface3: #2b2647;
+    --text: #f4f2fc;
+    --text-dim: #8e89ad;
+    --text-mid: #b7b1d8;
+    --border: #211c38;
+    --border2: #322c52;
+    --primary: #7c6cf6;
+    --primary2: #a78bfa;
+    --primary3: #c4b5fd;
+    --gold: #f5c66b;
+    --gold2: #e5a03c;
+    --green: #34d399;
+    --warning: #f5c66b;
+    --danger: #ff6b6b;
+    --grad-a: #4f46e5;
+    --grad-b: #7c3aed;
+    --grad-c: #f59e0b;
     --radius-lg: 24px;
     --radius-md: 16px;
     --radius-sm: 12px;
-    --glow-emerald: 0 0 60px rgba(16,185,129,0.45);
-    --glow-emerald-strong: 0 0 90px rgba(16,185,129,0.65);
+    --glow-violet: 0 10px 44px rgba(124,108,246,0.3);
+    --glow-violet-strong: 0 16px 64px rgba(124,108,246,0.48);
+    --shadow-card: 0 6px 24px rgba(0,0,0,0.4);
   }
 
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html { background: var(--bg); }
-  body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; overflow-x:hidden; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(124,108,246,0.14) 0%, transparent 60%),
+      radial-gradient(900px 500px at 100% 110%, rgba(245,198,107,0.08) 0%, transparent 55%),
+      var(--bg);
+    color:var(--text); font-family:'Inter',sans-serif; overflow-x:hidden;
+  }
   #root { max-width:480px; margin:0 auto; min-height:100vh; padding-bottom:100px; position:relative; }
 
-  /* ===================== LOADER — Gem Orbit ===================== */
+  /* ===================== LOADER — Violet Gem Orbit ===================== */
   .loader-overlay {
     position:fixed; inset:0; background:var(--bg); z-index:9999;
     display:flex; flex-direction:column;
@@ -95,10 +102,10 @@ const css = `
   }
   .loader-bg-glow {
     position:absolute; inset:0;
-    background: radial-gradient(ellipse at center, rgba(16,185,129,0.22) 0%, transparent 60%);
-    animation: pulseGlowEmerald 2.6s ease-in-out infinite alternate;
+    background: radial-gradient(ellipse at center, rgba(124,108,246,0.2) 0%, transparent 62%);
+    animation: pulseGlowViolet 2.6s ease-in-out infinite alternate;
   }
-  @keyframes pulseGlowEmerald {
+  @keyframes pulseGlowViolet {
     0% { opacity:0.35; transform:scale(0.8); }
     100% { opacity:1; transform:scale(1.25); }
   }
@@ -108,7 +115,7 @@ const css = `
   }
   .orbit-ring {
     position:absolute; border-radius:50%;
-    border:1.5px solid rgba(16,185,129,0.25);
+    border:1.5px solid rgba(124,108,246,0.22);
   }
   .orbit-ring.r1 { width:160px; height:160px; animation:orbitSpin 4s linear infinite; border-top-color:var(--primary2); }
   .orbit-ring.r2 { width:120px; height:120px; animation:orbitSpin 3s linear infinite reverse; border-right-color:var(--gold); }
@@ -118,8 +125,8 @@ const css = `
     to   { transform:rotate(360deg); }
   }
   .gem-svg {
-    width:56px; height:56px; position:relative; z-index:2;
-    filter: drop-shadow(0 0 24px rgba(16,185,129,0.9)) drop-shadow(0 0 48px rgba(251,191,36,0.4));
+    width:58px; height:58px; position:relative; z-index:2;
+    filter: drop-shadow(0 0 22px rgba(124,108,246,0.85)) drop-shadow(0 0 44px rgba(245,198,107,0.35));
     animation: gemFloat 2.2s ease-in-out infinite;
   }
   @keyframes gemFloat {
@@ -128,7 +135,7 @@ const css = `
   }
   .orbit-dot {
     position:absolute; width:7px; height:7px; border-radius:50%;
-    background:var(--gold); box-shadow:0 0 12px rgba(251,191,36,0.9);
+    background:var(--gold2); box-shadow:0 0 12px rgba(245,198,107,0.9);
     top:-3.5px; left:50%; margin-left:-3.5px;
   }
 
@@ -143,8 +150,8 @@ const css = `
     background:rgba(255,255,255,0.06);
     border-radius:10px;
     overflow:hidden;
-    box-shadow:inset 0 2px 4px rgba(0,0,0,0.6), 0 0 20px rgba(16,185,129,0.15);
-    border:1px solid rgba(16,185,129,0.15);
+    box-shadow:inset 0 2px 4px rgba(0,0,0,0.6), 0 0 20px rgba(124,108,246,0.15);
+    border:1px solid rgba(124,108,246,0.15);
   }
   .loader-progress-fill {
     height:100%;
@@ -152,7 +159,7 @@ const css = `
     background-size:200% 100%;
     border-radius:10px;
     transition:width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    box-shadow:0 0 25px rgba(16,185,129,0.5), inset 0 1px 2px rgba(255,255,255,0.2);
+    box-shadow:0 0 22px rgba(124,108,246,0.5), inset 0 1px 2px rgba(255,255,255,0.2);
     width:0%;
     animation: gradientShift 2s linear infinite;
   }
@@ -183,6 +190,81 @@ const css = `
   .toast.show { top:20px; }
   .toast-icon { width:18px; height:18px; flex-shrink:0; }
 
+  /* ===================== SUCCESS MODAL ===================== */
+  .modal-overlay {
+    position:fixed; inset:0; z-index:300;
+    background:rgba(4,3,9,0.72);
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+    display:flex; align-items:center; justify-content:center;
+    animation:fadeUp 0.25s ease both;
+  }
+  .modal-card {
+    width:calc(100% - 44px); max-width:380px;
+    background:linear-gradient(170deg, #1e1840 0%, #141224 55%, #1a1430 100%);
+    border:1px solid rgba(124,108,246,0.35);
+    border-radius:26px; padding:30px 24px 24px;
+    position:relative; overflow:hidden; text-align:center;
+    box-shadow:0 30px 80px rgba(0,0,0,0.6), var(--glow-violet);
+    animation:modalPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+  @keyframes modalPop {
+    from { opacity:0; transform:scale(0.7) translateY(40px); }
+    to   { opacity:1; transform:scale(1) translateY(0); }
+  }
+  .modal-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:3px;
+    background:linear-gradient(90deg, var(--grad-a), var(--grad-b), var(--gold));
+  }
+  .modal-glow {
+    position:absolute; inset:0; pointer-events:none;
+    background: radial-gradient(ellipse at 50% 0%, rgba(124,108,246,0.22) 0%, transparent 55%);
+  }
+  .modal-icon {
+    width:72px; height:72px; margin:0 auto 16px; border-radius:50%;
+    background:rgba(52,211,153,0.12); border:1px solid rgba(52,211,153,0.35);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 0 30px rgba(52,211,153,0.2);
+    position:relative; z-index:1;
+  }
+  .modal-icon img { width:36px; height:36px; }
+  .modal-card h3 {
+    font-size:1.5rem; font-weight:900; letter-spacing:-0.5px; color:#fff;
+    position:relative; z-index:1;
+  }
+  .modal-sub {
+    font-size:0.82rem; color:var(--text-mid); margin-top:6px;
+    position:relative; z-index:1;
+  }
+  .modal-details {
+    margin:20px 0 14px; background:rgba(11,10,20,0.5);
+    border:1px solid var(--border2); border-radius:16px;
+    padding:6px 16px; position:relative; z-index:1;
+  }
+  .modal-row {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:11px 0; border-bottom:1px solid var(--border);
+  }
+  .modal-row:last-child { border-bottom:none; }
+  .modal-row span { font-size:0.78rem; color:var(--text-dim); font-weight:500; }
+  .modal-row strong {
+    font-size:0.86rem; color:var(--text); font-weight:700;
+    font-variant-numeric:tabular-nums; max-width:60%; text-align:right;
+    word-break:break-all;
+  }
+  .modal-row strong.status-txt { color:var(--warning); }
+  .modal-note {
+    font-size:0.74rem; color:var(--text-dim); line-height:1.7;
+    margin-bottom:18px; position:relative; z-index:1;
+  }
+  .btn-modal-close {
+    width:100%; padding:15px; border:none; border-radius:14px;
+    background:linear-gradient(135deg, var(--grad-a), var(--grad-b));
+    color:#fff; font-size:0.95rem; font-weight:800; cursor:pointer;
+    position:relative; z-index:1;
+    transition:0.2s; box-shadow:0 6px 24px rgba(124,108,246,0.4);
+  }
+  .btn-modal-close:active { transform:scale(0.97); opacity:0.9; }
+
   /* ===================== TOP NAV ===================== */
   .top-nav {
     display:flex; justify-content:space-between; align-items:center;
@@ -194,7 +276,7 @@ const css = `
   .user-avatar img {
     width:44px; height:44px; border-radius:50%;
     border:2px solid var(--primary); object-fit:cover;
-    box-shadow:0 0 0 3px rgba(16,185,129,0.22), 0 0 30px rgba(16,185,129,0.15);
+    box-shadow:0 0 0 3px rgba(124,108,246,0.22), 0 0 30px rgba(124,108,246,0.15);
   }
   .avatar-status {
     position:absolute; bottom:1px; right:1px; width:12px; height:12px;
@@ -233,26 +315,26 @@ const css = `
   /* ===================== BALANCE CARD ===================== */
   .balance-card {
     margin: 0 16px 20px;
-    background: linear-gradient(145deg, #0b1a12 0%, #0a2417 40%, #1a1a0a 80%, #0b1a12 100%);
-    border:1px solid rgba(16,185,129,0.45);
+    background: linear-gradient(148deg, #221545 0%, #16102e 38%, #231332 72%, #221545 100%);
+    border:1px solid rgba(124,108,246,0.42);
     border-radius:var(--radius-lg); padding:28px 24px 24px;
     position:relative; overflow:hidden;
-    box-shadow: var(--glow-emerald), 0 0 0 1px rgba(16,185,129,0.18) inset;
+    box-shadow: var(--glow-violet), 0 0 0 1px rgba(124,108,246,0.16) inset;
     animation: cardGlowIn 0.9s cubic-bezier(0.34,1.56,0.64,1) both;
     transition:box-shadow 0.6s;
   }
   .balance-card:hover {
-    box-shadow: var(--glow-emerald-strong), 0 0 0 2px rgba(16,185,129,0.3) inset;
+    box-shadow: var(--glow-violet-strong), 0 0 0 2px rgba(124,108,246,0.28) inset;
   }
   @keyframes cardGlowIn {
-    from { transform:scale(0.85) translateY(30px); opacity:0; box-shadow:0 0 0 rgba(16,185,129,0); }
-    to   { transform:scale(1) translateY(0); opacity:1; box-shadow:var(--glow-emerald); }
+    from { transform:scale(0.85) translateY(30px); opacity:0; box-shadow:0 0 0 rgba(124,108,246,0); }
+    to   { transform:scale(1) translateY(0); opacity:1; box-shadow:var(--glow-violet); }
   }
   .bc-glow {
     position:absolute; inset:0; pointer-events:none;
-    background: radial-gradient(ellipse at 20% 10%, rgba(16,185,129,0.35) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 90%, rgba(251,191,36,0.22) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 50%, rgba(110,231,183,0.1) 0%, transparent 40%);
+    background: radial-gradient(ellipse at 18% 8%, rgba(124,108,246,0.36) 0%, transparent 52%),
+                radial-gradient(ellipse at 82% 92%, rgba(245,198,107,0.18) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(196,181,253,0.08) 0%, transparent 40%);
     animation: glowDrift 7s ease-in-out infinite alternate;
   }
   @keyframes glowDrift {
@@ -261,30 +343,31 @@ const css = `
   }
   .bc-grid {
     position:absolute; inset:0; pointer-events:none;
-    background-image: linear-gradient(rgba(16,185,129,0.06) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(16,185,129,0.06) 1px, transparent 1px);
+    background-image: linear-gradient(rgba(124,108,246,0.05) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(124,108,246,0.05) 1px, transparent 1px);
     background-size: 28px 28px;
-    opacity:0.6;
+    opacity:0.5;
   }
   .bc-label {
     font-size:0.68rem; text-transform:uppercase; letter-spacing:3px;
-    color:rgba(110,231,183,0.8); font-weight:700; margin-bottom:10px;
+    color:rgba(196,181,253,0.85); font-weight:700; margin-bottom:10px;
     position:relative; z-index:1;
   }
   .bc-amount {
     font-size:3.2rem; font-weight:900; color:#fff; letter-spacing:-2px; line-height:1;
     position:relative; z-index:1;
-    text-shadow:0 0 60px rgba(16,185,129,0.3);
+    font-variant-numeric:tabular-nums;
+    text-shadow:0 0 60px rgba(124,108,246,0.35);
   }
   .bc-sym { font-size:1.3rem; font-weight:600; opacity:0.7; }
   .bc-footer {
     display:flex; gap:20px; margin-top:22px; position:relative; z-index:1;
-    padding-top:16px; border-top:1px solid rgba(16,185,129,0.18);
+    padding-top:16px; border-top:1px solid rgba(124,108,246,0.18);
   }
   .bc-mini span:first-child {
-    font-size:0.65rem; color:rgba(110,231,183,0.6); font-weight:600; display:block;
+    font-size:0.65rem; color:rgba(196,181,253,0.6); font-weight:600; display:block;
   }
-  .bc-mini span:last-child { font-size:0.95rem; color:#fff; font-weight:700; }
+  .bc-mini span:last-child { font-size:0.95rem; color:#fff; font-weight:700; font-variant-numeric:tabular-nums; }
 
   /* ===================== SECTION HEADING ===================== */
   .sec-head {
@@ -315,8 +398,8 @@ const css = `
   }
   .stat-card:hover {
     transform:translateY(-6px) scale(1.02);
-    border-color:rgba(16,185,129,0.4);
-    box-shadow:0 10px 30px rgba(16,185,129,0.1);
+    border-color:rgba(124,108,246,0.4);
+    box-shadow:0 10px 30px rgba(124,108,246,0.12);
   }
   .stat-card:active { transform:scale(0.96) translateY(0); }
   .stat-icon-wrap {
@@ -325,12 +408,12 @@ const css = `
     margin-bottom:12px;
   }
   .stat-icon-wrap img { width:22px; height:22px; }
-  .stat-icon-wrap.blue { background:rgba(34,211,238,0.12); }
-  .stat-icon-wrap.purple { background:rgba(16,185,129,0.12); }
-  .stat-icon-wrap.green { background:rgba(34,197,94,0.12); }
-  .stat-icon-wrap.orange { background:rgba(251,191,36,0.12); }
+  .stat-icon-wrap.blue   { background:rgba(124,108,246,0.12); border:1px solid rgba(124,108,246,0.22); }
+  .stat-icon-wrap.purple { background:rgba(236,72,153,0.12);  border:1px solid rgba(236,72,153,0.22); }
+  .stat-icon-wrap.green  { background:rgba(52,211,153,0.12);   border:1px solid rgba(52,211,153,0.22); }
+  .stat-icon-wrap.orange { background:rgba(245,158,11,0.12);   border:1px solid rgba(245,158,11,0.22); }
   .stat-card p { font-size:0.7rem; color:var(--text-dim); font-weight:500; margin-bottom:5px; }
-  .stat-card h4 { font-size:1.4rem; font-weight:800; letter-spacing:-0.5px; color:var(--text); }
+  .stat-card h4 { font-size:1.4rem; font-weight:800; letter-spacing:-0.5px; color:var(--text); font-variant-numeric:tabular-nums; }
 
   /* ===================== REFERRAL CARD ===================== */
   .ref-card {
@@ -345,14 +428,14 @@ const css = `
   .ref-top { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
   .ref-icon {
     width:44px; height:44px; border-radius:14px;
-    background:rgba(16,185,129,0.14); border:1px solid rgba(16,185,129,0.2);
+    background:rgba(124,108,246,0.14); border:1px solid rgba(124,108,246,0.22);
     display:flex; align-items:center; justify-content:center; flex-shrink:0;
   }
   .ref-icon img { width:24px; height:24px; }
   .ref-title h4 { font-size:0.95rem; font-weight:700; }
   .ref-badge {
     display:inline-flex; align-items:center; gap:4px;
-    background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.28);
+    background:rgba(245,198,107,0.12); border:1px solid rgba(245,198,107,0.28);
     color:var(--gold); padding:3px 10px; border-radius:20px;
     font-size:0.7rem; font-weight:700; margin-top:4px;
     animation:badgePop 0.5s cubic-bezier(0.34,1.56,0.64,1) both 0.3s;
@@ -370,7 +453,7 @@ const css = `
     color:#fff; border:none; padding:9px 15px; border-radius:9px;
     font-size:0.8rem; font-weight:600; cursor:pointer;
     display:flex; align-items:center; gap:6px; transition:0.2s; flex-shrink:0;
-    box-shadow:0 3px 12px rgba(16,185,129,0.25);
+    box-shadow:0 3px 12px rgba(124,108,246,0.25);
   }
   .btn-copy img { width:14px; height:14px; filter:brightness(10); }
   .btn-copy:active { transform:scale(0.93); opacity:0.85; }
@@ -380,7 +463,7 @@ const css = `
     background: linear-gradient(135deg, var(--grad-a), var(--grad-b));
     color:#fff; font-size:0.92rem; font-weight:700; cursor:pointer;
     display:flex; align-items:center; justify-content:center; gap:8px;
-    transition:0.2s; box-shadow:0 4px 20px rgba(16,185,129,0.35);
+    transition:0.2s; box-shadow:0 4px 20px rgba(124,108,246,0.35);
   }
   .btn-share img { width:18px; height:18px; filter:brightness(10); }
   .btn-share:active { transform:scale(0.97); opacity:0.9; }
@@ -397,7 +480,7 @@ const css = `
   .ad-box:active { transform:scale(0.97); }
   .ad-icon {
     width:48px; height:48px; border-radius:14px;
-    background:rgba(34,211,238,0.1); border:1px solid rgba(34,211,238,0.15);
+    background:rgba(124,108,246,0.1); border:1px solid rgba(124,108,246,0.16);
     display:flex; align-items:center; justify-content:center;
     margin:0 auto 12px;
   }
@@ -413,7 +496,7 @@ const css = `
     color:#fff; border:none; padding:10px 0; width:100%;
     border-radius:10px; font-size:0.83rem; font-weight:600; cursor:pointer;
     display:flex; align-items:center; justify-content:center; gap:6px;
-    transition:0.2s; box-shadow:0 3px 12px rgba(16,185,129,0.2);
+    transition:0.2s; box-shadow:0 3px 12px rgba(124,108,246,0.22);
   }
   .ad-btn img { width:14px; height:14px; filter:brightness(10); }
   .ad-btn:active:not(:disabled) { transform:scale(0.96); opacity:0.85; }
@@ -446,19 +529,19 @@ const css = `
   }
   .btn-task-start {
     background: linear-gradient(135deg, var(--grad-a), var(--grad-b));
-    color:#fff; box-shadow:0 3px 12px rgba(16,185,129,0.22);
+    color:#fff; box-shadow:0 3px 12px rgba(124,108,246,0.24);
   }
   .btn-task-start:disabled { opacity:0.6; cursor:not-allowed; }
   .btn-task-wait { background:var(--surface2); color:var(--text-dim); cursor:not-allowed; border:1px solid var(--border); }
   .btn-task-claim {
     background: linear-gradient(135deg, var(--gold2), var(--gold));
-    color:#0c1410; animation:claimPulse 1.2s ease-in-out infinite;
-    box-shadow:0 3px 14px rgba(251,191,36,0.3);
+    color:#0b0a14; animation:claimPulse 1.2s ease-in-out infinite;
+    box-shadow:0 3px 14px rgba(245,198,107,0.3);
   }
   .btn-task-claim:disabled { opacity:0.6; cursor:not-allowed; animation:none; }
   @keyframes claimPulse {
-    0%,100%{box-shadow:0 3px 14px rgba(251,191,36,0.3)}
-    50%{box-shadow:0 4px 22px rgba(251,191,36,0.6)}
+    0%,100%{box-shadow:0 3px 14px rgba(245,198,107,0.3)}
+    50%{box-shadow:0 4px 22px rgba(245,198,107,0.6)}
   }
 
   /* ===================== MISSIONS ===================== */
@@ -468,11 +551,11 @@ const css = `
     border-radius:var(--radius-md); padding:16px;
     animation:fadeUp 0.5s ease both; position:relative; overflow:hidden;
   }
-  .mission-card.done { border-color:rgba(251,191,36,0.35); }
+  .mission-card.done { border-color:rgba(245,198,107,0.35); }
   .mission-top { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
   .mission-icon {
     width:42px; height:42px; border-radius:13px; flex-shrink:0;
-    background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.22);
+    background:rgba(245,198,107,0.12); border:1px solid rgba(245,198,107,0.22);
     display:flex; align-items:center; justify-content:center;
   }
   .mission-icon img { width:22px; height:22px; }
@@ -494,7 +577,7 @@ const css = `
     padding:8px 16px; border-radius:10px; font-size:0.78rem; font-weight:700;
     border:none; cursor:pointer; transition:0.2s;
     background:linear-gradient(135deg, var(--gold2), var(--gold));
-    color:#0c1410; box-shadow:0 3px 12px rgba(251,191,36,0.28);
+    color:#0b0a14; box-shadow:0 3px 12px rgba(245,198,107,0.28);
   }
   .btn-mission-claim:disabled { opacity:0.55; cursor:not-allowed; box-shadow:none; }
   .mission-claimed-badge {
@@ -516,14 +599,14 @@ const css = `
     animation:fadeUp 0.5s ease both;
   }
   .method-card:hover {
-    border-color:rgba(16,185,129,0.3);
+    border-color:rgba(124,108,246,0.3);
     transform:translateY(-2px);
-    box-shadow:0 4px 16px rgba(16,185,129,0.1);
+    box-shadow:0 4px 16px rgba(124,108,246,0.1);
   }
   .method-card.active {
-    background:rgba(16,185,129,0.1);
+    background:rgba(124,108,246,0.1);
     border-color:var(--primary);
-    box-shadow:0 0 30px rgba(16,185,129,0.28);
+    box-shadow:0 0 30px rgba(124,108,246,0.28);
   }
   .method-card:active { transform:scale(0.97); }
   .method-card h5 { font-size:0.88rem; font-weight:700; color:var(--text); margin-bottom:6px; }
@@ -539,7 +622,7 @@ const css = `
 
   /* ===================== WITHDRAW ===================== */
   .info-banner {
-    background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.18);
+    background:rgba(124,108,246,0.06); border:1px solid rgba(124,108,246,0.18);
     border-radius:var(--radius-sm); padding:14px 16px;
     display:flex; align-items:flex-start; gap:12px; margin-bottom:16px;
   }
@@ -554,14 +637,14 @@ const css = `
     border-radius:var(--radius-sm); color:var(--text); font-size:0.93rem;
     font-weight:500; outline:none; transition:0.2s;
   }
-  .form-inp:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(16,185,129,0.1); }
+  .form-inp:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(124,108,246,0.12); }
   .form-inp::placeholder { color:var(--text-dim); opacity:0.8; }
   .btn-submit {
     width:100%; padding:16px; border:none; border-radius:var(--radius-sm);
     background: linear-gradient(135deg, var(--grad-a), var(--grad-b));
     color:#fff; font-size:0.97rem; font-weight:700; cursor:pointer;
     margin-top:6px; display:flex; align-items:center; justify-content:center; gap:8px;
-    transition:0.2s; box-shadow:0 4px 20px rgba(16,185,129,0.3);
+    transition:0.2s; box-shadow:0 4px 20px rgba(124,108,246,0.3);
   }
   .btn-submit:active:not(:disabled) { transform:scale(0.98); opacity:0.9; }
   .btn-submit:disabled { background:var(--surface2); box-shadow:none; cursor:not-allowed; color:var(--text-dim); }
@@ -597,7 +680,7 @@ const css = `
   .bottom-nav {
     position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
     width:calc(100% - 30px); max-width:420px;
-    background:rgba(10,18,14,0.92); border:1px solid var(--border2);
+    background:rgba(11,10,20,0.92); border:1px solid var(--border2);
     padding:6px 6px; border-radius:100px; display:flex; justify-content:space-around;
     z-index:100; box-shadow:0 12px 48px rgba(0,0,0,0.6);
     backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
@@ -612,9 +695,10 @@ const css = `
     filter:grayscale(1) brightness(0.35); transition:0.25s;
   }
   .nav-item span { font-size:0.56rem; font-weight:600; color:var(--text-dim); opacity:0; transition:0.2s; }
-  .nav-item.active { background:rgba(16,185,129,0.08); }
+  .nav-item.active { background:rgba(124,108,246,0.08); }
   .nav-item.active .nav-img { filter:none; transform:scale(1.1); }
   .nav-item.active span { opacity:1; color:var(--primary2); }
+  .nav-item:active { transform:scale(0.92); }
   .nav-dot {
     width:4px; height:4px; background:var(--primary2); border-radius:50%;
     position:absolute; bottom:5px; display:none;
@@ -655,8 +739,8 @@ const tg = window.Telegram?.WebApp || {
 
 tg.ready();
 tg.expand();
-tg.setHeaderColor?.('#060a08');
-tg.setBackgroundColor?.('#060a08');
+tg.setHeaderColor?.('#0b0a14');
+tg.setBackgroundColor?.('#0b0a14');
 
 const INIT_DATA = tg.initData || '';
 
@@ -688,7 +772,7 @@ async function apiCall(action, method = 'GET', body = null) {
 }
 
 // ============================================================
-//  Loader — Gem Orbit (Unique)
+//  Loader — Violet Gem Orbit (Unique)
 // ============================================================
 function Loader({ hiding, progress }) {
     return (
@@ -701,14 +785,15 @@ function Loader({ hiding, progress }) {
                 <svg className="gem-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <defs>
                         <linearGradient id="gemGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="#6ee7b7" />
-                            <stop offset="55%" stopColor="#10b981" />
-                            <stop offset="100%" stopColor="#fbbf24" />
+                            <stop offset="0%" stopColor="#c4b5fd" />
+                            <stop offset="50%" stopColor="#7c6cf6" />
+                            <stop offset="100%" stopColor="#4f46e5" />
                         </linearGradient>
                     </defs>
-                    <path d="M50 8 L80 30 L68 90 L32 90 L20 30 Z" fill="url(#gemGrad)" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
-                    <path d="M50 8 L80 30 L50 45 Z" fill="rgba(255,255,255,0.22)" />
-                    <path d="M20 30 L50 45 L32 90 Z" fill="rgba(0,0,0,0.12)" />
+                    <path d="M50 10 L82 32 L68 88 L32 88 L18 32 Z" fill="url(#gemGrad)" stroke="rgba(255,255,255,0.28)" strokeWidth="1.5" />
+                    <path d="M50 10 L82 32 L50 46 Z" fill="rgba(255,255,255,0.32)" />
+                    <path d="M18 32 L50 46 L32 88 Z" fill="rgba(0,0,0,0.15)" />
+                    <path d="M50 46 L82 32 L68 88 Z" fill="rgba(255,255,255,0.08)" />
                 </svg>
             </div>
 
@@ -1263,6 +1348,7 @@ export default function App() {
     const [activePage, setActivePage] = useState('home');
     const [toast,      setToast]      = useState({ show: false, type: 'success', msg: '' });
     const [loadingProgress, setLoadingProgress] = useState(0);
+    const [withdrawModal, setWithdrawModal] = useState(null);
     const [appState,   setAppState]   = useState({
         user: {
             id: tgUser.id,
@@ -1277,7 +1363,7 @@ export default function App() {
     });
 
     const toastTimer = useRef(null);
-    const navLock = useRef(false);
+    const withdrawLock = useRef(false);
 
     const showToast = useCallback((type, msg) => {
         setToast({ show: true, type, msg });
@@ -1468,9 +1554,12 @@ export default function App() {
         tg.HapticFeedback.notificationOccurred('success');
     }
 
-    // ===== WITHDRAW =====
+    // ===== WITHDRAW (anti-spam guarded) =====
     async function handleWithdraw(payload) {
+        if (withdrawLock.current) return false;
+        withdrawLock.current = true;
         const rData = await apiCall('withdraw', 'POST', payload);
+        withdrawLock.current = false;
         if (rData?.success) {
             setAppState(prev => {
                 const next = { ...prev, user: { ...prev.user, balance: prev.user.balance - payload.amount } };
@@ -1481,6 +1570,12 @@ export default function App() {
             if (updtHist) {
                 setAppState(prev => { const n = { ...prev, history: updtHist }; saveLocal(n); return n; });
             }
+            setWithdrawModal({
+                amount: payload.amount,
+                method: payload.method,
+                account: payload.account,
+                balance: Math.max(0, (appState.user.balance || 0) - payload.amount),
+            });
             showToast('success', 'উত্তোলন অনুরোধ জমা দেওয়া হয়েছে!');
             tg.HapticFeedback.notificationOccurred('success');
             return true;
@@ -1514,21 +1609,19 @@ export default function App() {
         else showToast('warning', 'সাপোর্ট লিংক কনফিগার করা নেই।');
     }
 
-    // ===== NAVIGATION WITH ASYNC LOCK =====
-    async function handleNav(page) {
-        if (navLock.current) return;
-        navLock.current = true;
+    // ===== NAVIGATION — instant, no blocking lock =====
+    function handleNav(page) {
+        if (page === activePage) return;
         setActivePage(page);
         try { tg.HapticFeedback.impactOccurred('light'); } catch {}
 
         if (page === 'withdraw') {
-            const data = await apiCall('getHistory', 'POST', { id: appState.user.id });
-            if (data) {
-                setAppState(prev => { const n = { ...prev, history: data }; saveLocal(n); return n; });
-            }
+            apiCall('getHistory', 'POST', { id: appState.user.id }).then(data => {
+                if (data) {
+                    setAppState(prev => { const n = { ...prev, history: data }; saveLocal(n); return n; });
+                }
+            });
         }
-
-        setTimeout(() => { navLock.current = false; }, 400);
     }
 
     const u   = appState.user;
@@ -1543,13 +1636,54 @@ export default function App() {
             {!appReady && <Loader hiding={loaderHide} progress={loadingProgress} />}
             <Toast type={toast.type} msg={toast.msg} show={toast.show} />
 
+            {withdrawModal && (
+                <div className="modal-overlay" onClick={() => setWithdrawModal(null)}>
+                    <div className="modal-card" onClick={e => e.stopPropagation()}>
+                        <div className="modal-glow" />
+                        <div className="modal-icon">
+                            <img src={ICONS.check} alt="" />
+                        </div>
+                        <h3>অভিনন্দন!</h3>
+                        <p className="modal-sub">আপনার উত্তোলনের অনুরোধটি সফলভাবে জমা হয়েছে</p>
+                        <div className="modal-details">
+                            <div className="modal-row">
+                                <span>পরিমাণ</span>
+                                <strong>{withdrawModal.amount} {sym}</strong>
+                            </div>
+                            <div className="modal-row">
+                                <span>পেমেন্ট পদ্ধতি</span>
+                                <strong>{withdrawModal.method}</strong>
+                            </div>
+                            <div className="modal-row">
+                                <span>অ্যাকাউন্ট</span>
+                                <strong>{withdrawModal.account}</strong>
+                            </div>
+                            <div className="modal-row">
+                                <span>নতুন ব্যালেন্স</span>
+                                <strong>{withdrawModal.balance.toFixed(2)} {sym}</strong>
+                            </div>
+                            <div className="modal-row">
+                                <span>স্ট্যাটাস</span>
+                                <strong className="status-txt">অপেক্ষমাণ</strong>
+                            </div>
+                        </div>
+                        <p className="modal-note">
+                            আমাদের টিম সাধারণত ২৪ ঘণ্টার মধ্যে আপনার অনুরোধটি প্রসেস করবে।
+                            প্রসেস সম্পন্ন হলে ব্যালেন্স আপনার অ্যাকাউন্টে স্থানান্তর করা হবে।
+                            যেকোনো সমস্যায় সাপোর্টের সাথে যোগাযোগ করুন।
+                        </p>
+                        <button className="btn-modal-close" onClick={() => setWithdrawModal(null)}>ঠিক আছে</button>
+                    </div>
+                </div>
+            )}
+
             {appReady && (
                 <>
                     <header className="top-nav">
                         <div className="user-pill">
                             <div className="user-avatar">
                                 <img
-                                    src={u.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.firstName||'U')}&background=10b981&color=fff&size=88`}
+                                    src={u.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.firstName||'U')}&background=7c6cf6&color=fff&size=88`}
                                     alt={u.firstName}
                                 />
                                 <div className="avatar-status" />
