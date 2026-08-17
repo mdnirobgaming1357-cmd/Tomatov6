@@ -1030,7 +1030,8 @@ function AdBox({ slot, index, done, limit, onAdDone }) {
 }
 
 // ============================================================
-//  Task Item
+//  Task Item — claim হওয়ার সাথে সাথে বাটন নিরাপদে "প্রসেসিং" অবস্থায়
+//  ডিজেবল থাকে, সার্ভার রেসপন্স না আসা পর্যন্ত পুনরায় ক্লিকযোগ্য হয় না
 // ============================================================
 function TaskItem({ id, task, history, sym, now, onBegin }) {
     const [state, setState] = useState('idle');
@@ -1062,12 +1063,16 @@ function TaskItem({ id, task, history, sym, now, onBegin }) {
         }, 1000);
     }
 
-    function handleClaim() {
+    async function handleClaim() {
         if (lockRef.current) return;
         lockRef.current = true;
-        onBegin(id, task);
-        setState('idle');
-        setTimeout(() => { lockRef.current = false; }, 500);
+        setState('claiming');
+        const ok = await onBegin(id, task);
+        lockRef.current = false;
+        // সফল হলে parent থেকে taskHistory আপডেট হয়ে isDailyDone/তালিকা থেকে
+        // বাদ পড়ার মাধ্যমে এমনিতেই বাটন লক থাকবে। ব্যর্থ হলে পুনরায় দাবি
+        // করার সুযোগ দিতে claim বাটনে ফিরিয়ে আনা হয়।
+        if (!ok) setState('claim');
     }
 
     useEffect(() => () => clearInterval(timerRef.current), []);
@@ -1096,6 +1101,8 @@ function TaskItem({ id, task, history, sym, now, onBegin }) {
                 <button className="btn-task btn-task-wait" disabled>
                     <img src={ICONS.clock} alt="" style={{width:12,height:12}} /> {hrs}ঘ {mins}মি
                 </button>
+            ) : state === 'claiming' ? (
+                <button className="btn-task btn-task-wait" disabled>প্রসেসিং...</button>
             ) : state === 'idle' ? (
                 <button className="btn-task btn-task-start" onClick={handleStart} disabled={lockRef.current}>শুরু</button>
             ) : state === 'waiting' ? (
@@ -1495,16 +1502,17 @@ export default function App() {
         showToast('success', `+${rwrd} ${appState.config.currencySymbol || 'টাকা'} পুরস্কার!`);
     }
 
-    // ===== TASK REWARD =====
+    // ===== TASK REWARD — সফল/ব্যর্থ বোঝাতে boolean রিটার্ন করে, যাতে
+    // TaskItem-এর ক্লেইম বাটন সঠিকভাবে ডিজেবল/আনলক করা যায় =====
     const taskLock = useRef(false);
     async function handleTaskBegin(id) {
-        if (taskLock.current) return;
+        if (taskLock.current) return false;
         taskLock.current = true;
         const res = await apiCall('claimTaskReward', 'POST', { taskId: id });
         taskLock.current = false;
         if (!res || res.error) {
             showToast('error', res?.error || 'পুরস্কার দাবি ব্যর্থ হয়েছে।');
-            return;
+            return false;
         }
         const rwrd = res.reward;
         setAppState(prev => {
@@ -1523,6 +1531,7 @@ export default function App() {
         });
         showToast('success', 'টাস্ক সম্পন্ন! পুরস্কার যোগ হয়েছে।');
         tg.HapticFeedback.notificationOccurred('success');
+        return true;
     }
 
     // ===== MISSION BONUS CLAIM =====
