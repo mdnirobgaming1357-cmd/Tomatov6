@@ -45,6 +45,7 @@ const ICONS = {
   trophy:   "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f3c6.png",
   target:   "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f3af.png",
   gem:      "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f48e.png",
+  megaphone:"https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f4e2.png",
 };
 
 // ============================================================
@@ -265,6 +266,20 @@ const css = `
   }
   .btn-modal-close:active { transform:scale(0.97); opacity:0.9; }
 
+  /* ===================== NOTICE LIST (inside modal) ===================== */
+  .notice-list {
+    text-align:left; max-height:52vh; overflow-y:auto;
+    margin:18px 0 16px; display:flex; flex-direction:column; gap:10px;
+    position:relative; z-index:1;
+  }
+  .notice-item {
+    background:rgba(11,10,20,0.5); border:1px solid var(--border2);
+    border-radius:14px; padding:12px 14px;
+  }
+  .notice-item h4 { font-size:0.86rem; font-weight:700; color:var(--text); margin-bottom:5px; }
+  .notice-item p { font-size:0.78rem; color:var(--text-mid); line-height:1.6; white-space:pre-wrap; word-break:break-word; }
+  .notice-empty { font-size:0.82rem; color:var(--text-dim); text-align:center; padding:14px 0; position:relative; z-index:1; }
+
   /* ===================== TOP NAV ===================== */
   .top-nav {
     display:flex; justify-content:space-between; align-items:center;
@@ -300,6 +315,24 @@ const css = `
     background:var(--danger); border-radius:50%; border:2px solid var(--bg);
   }
   .notif-btn:active { transform:scale(0.92); }
+
+  .nav-icons-right { display:flex; align-items:center; gap:8px; }
+  .notice-btn {
+    width:40px; height:40px; background:var(--surface2); border:1px solid var(--border2);
+    border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:0.2s; position:relative;
+  }
+  .notice-btn img { width:18px; height:18px; }
+  .notice-btn:active { transform:scale(0.92); }
+  .notice-dot {
+    position:absolute; top:5px; right:5px; width:10px; height:10px;
+    background:var(--danger); border-radius:50%; border:2px solid var(--bg);
+    animation: noticeGlow 1.4s ease-in-out infinite;
+  }
+  @keyframes noticeGlow {
+    0%,100% { box-shadow:0 0 4px rgba(255,107,107,0.6); transform:scale(1); }
+    50%     { box-shadow:0 0 16px rgba(255,107,107,1); transform:scale(1.18); }
+  }
 
   /* ===================== PAGES ===================== */
   .page { display:none; padding:0 16px; }
@@ -751,7 +784,9 @@ async function apiCall(action, method = 'GET', body = null) {
     try {
         let url = `${API_URL}?action=${action}`;
         if (method === 'GET') {
-            if (INIT_DATA) url += `&initData=${encodeURIComponent(INIT_DATA)}`;
+            // getConfig পাবলিক action — initData যাচাই হয় না, তাই অহেতুক
+            // ইউজারের Telegram তথ্য (আইডি/নাম/ছবি/hash) URL-এ পাঠানো হয় না
+            if (INIT_DATA && action !== 'getConfig') url += `&initData=${encodeURIComponent(INIT_DATA)}`;
             if (body) Object.keys(body).forEach(k => (url += `&${k}=${encodeURIComponent(body[k])}`));
         }
         const opts = { method };
@@ -1356,6 +1391,7 @@ export default function App() {
     const [toast,      setToast]      = useState({ show: false, type: 'success', msg: '' });
     const [loadingProgress, setLoadingProgress] = useState(0);
     const [withdrawModal, setWithdrawModal] = useState(null);
+    const [noticeModalOpen, setNoticeModalOpen] = useState(false);
     const [appState,   setAppState]   = useState({
         user: {
             id: tgUser.id,
@@ -1637,6 +1673,11 @@ export default function App() {
     const cfg = appState.config;
     const sym = cfg.currencySymbol || 'টাকা';
     const totalAdViews = Object.values(u.dailyAds || {}).reduce((s, c) => s + c, 0);
+    // এডমিন যতগুলো নোটিশ "সক্রিয়" রাখবে, ততক্ষণ আইকন লাল হয়ে চকচক করবে —
+    // এটা কোনো "দেখা হয়েছে/হয়নি" ট্র্যাকিং করে না, শুধু নোটিশ আছে কিনা তা দেখে
+    const notices = cfg.notices || {};
+    const noticeIds = Object.keys(notices);
+    const hasActiveNotices = noticeIds.length > 0;
 
     return (
         <>
@@ -1686,6 +1727,32 @@ export default function App() {
                 </div>
             )}
 
+            {noticeModalOpen && (
+                <div className="modal-overlay" onClick={() => setNoticeModalOpen(false)}>
+                    <div className="modal-card" onClick={e => e.stopPropagation()}>
+                        <div className="modal-glow" />
+                        <div className="modal-icon">
+                            <img src={ICONS.megaphone} alt="" />
+                        </div>
+                        <h3>নোটিশ</h3>
+                        <p className="modal-sub">সর্বশেষ ঘোষণা ও তথ্য</p>
+                        {noticeIds.length === 0 ? (
+                            <p className="notice-empty">এই মুহূর্তে কোনো নোটিশ নেই।</p>
+                        ) : (
+                            <div className="notice-list">
+                                {noticeIds.map(id => (
+                                    <div className="notice-item" key={id}>
+                                        <h4>{notices[id].title}</h4>
+                                        <p>{notices[id].message}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <button className="btn-modal-close" onClick={() => setNoticeModalOpen(false)}>বন্ধ করুন</button>
+                    </div>
+                </div>
+            )}
+
             {appReady && (
                 <>
                     <header className="top-nav">
@@ -1702,10 +1769,15 @@ export default function App() {
                                 <p>আইডি: {u.id || tgUser.id}</p>
                             </div>
                         </div>
-                        <button className="notif-btn" onClick={openSupport} aria-label="সাপোর্ট">
-                            <img src={ICONS.bell} alt="সাপোর্ট" />
-                            <div className="notif-dot" />
-                        </button>
+                        <div className="nav-icons-right">
+                            <button className="notice-btn" onClick={() => setNoticeModalOpen(true)} aria-label="নোটিশ">
+                                <img src={ICONS.megaphone} alt="নোটিশ" />
+                                {hasActiveNotices && <div className="notice-dot" />}
+                            </button>
+                            <button className="notif-btn" onClick={openSupport} aria-label="সাপোর্ট">
+                                <img src={ICONS.bell} alt="সাপোর্ট" />
+                            </button>
+                        </div>
                     </header>
 
                     {activePage === 'home' && (
