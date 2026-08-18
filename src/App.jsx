@@ -19,6 +19,10 @@
  *      বসান (slot.reward / slot.amount / slot.price / slot.coins /
  *      config.adReward, এমনকি "৩৳" বা বাংলা সংখ্যাতেও) সেই আসল মানই
  *      দেখানো হয়, কোনো ডিফল্ট/জাল দাম নয়।
+ *   5. বোনাস পাওয়ার পর ৬ সেকেন্ড অপেক্ষা — বিজ্ঞাপন দেখে বোনাস ব্যালেন্সে
+ *      যোগ হওয়ার পর পরের বিজ্ঞাপন দেখতে ৬ সেকেন্ড অপেক্ষা করতে হয়।
+ *      নিরাপত্তা: টাকা ও ব্যালেন্স সবসময় সার্ভার যাচাই করে যোগ হয়,
+ *      ফ্রন্টএন্ডে কোনো ডাটাবেজ/রিওয়ার্ড-জাল করার কোড নেই।
  * ============================================================
  */
 
@@ -32,6 +36,12 @@ const API_URL = "https://www.gajarbotol.site/nirob/config.php";
 // বিজ্ঞাপন দেখার ন্যূনতম সময় (সেকেন্ড) — পুরোটা না দেখলে রিওয়ার্ড ব্যালেন্সে
 // যোগ হবে না। ক্লিকের সাথে সাথে এই কাউন্টডাউন শুরু হয়।
 const AD_WATCH_SECONDS = 17;
+
+// বিজ্ঞাপন দেখে বোনাস পাওয়ার পর পরের বিজ্ঞাপনের আগে ন্যূনতম অপেক্ষা (সেকেন্ড)।
+// এটি শুধু UI-লেভেলের বিরতি — আসল রিওয়ার্ড সবসময় সার্ভার (`claimAdReward`)
+// যাচাই করে ব্যালেন্সে যোগ হয়, তাই ফ্রন্টএন্ডে কোনো টাকা/ডাটাবেজ জাল করার
+// সুযোগ নেই।
+const AD_REWARD_COOLDOWN = 6;
 
 // admin যে ফরম্যাটেই রিওয়ার্ড বসাক না কেন (3, "3", "৩৳", "3.00" ইত্যাদি)
 // সবকিছু থেকে আসল সংখ্যা বের করা হয়। কিছু না পাওয়া গেলে NaN — ফলে
@@ -1020,7 +1030,7 @@ function HomePage({ appState, onCopy, onShare }) {
 // ============================================================
 //  Earn Page
 // ============================================================
-function EarnPage({ appState, onAdDone, onTaskBegin }) {
+function EarnPage({ appState, onAdDone, onTaskBegin, adCooldown }) {
     const cfg   = appState.config;
     const u     = appState.user;
     const sym   = cfg.currencySymbol || 'টাকা';
@@ -1078,6 +1088,7 @@ function EarnPage({ appState, onAdDone, onTaskBegin }) {
                             limit={limit}
                             reward={getAdReward(s)}
                             sym={sym}
+                            cooldown={adCooldown || 0}
                             onAdDone={onAdDone}
                         />
                     ))}
@@ -1108,13 +1119,15 @@ function EarnPage({ appState, onAdDone, onTaskBegin }) {
 //  কাজ করে। "দেখুন" বাটন ক্লিক করলেই সাথে সাথে ১৭ সেকেন্ডের কাউন্টডাউন
 //  শুরু হয় — পুরো ১৭ সেকেন্ড + বিজ্ঞাপন সম্পূর্ণ দেখলেই কেবল রিওয়ার্ড
 //  ব্যালেন্সে যোগ হয়। আগে বন্ধ করলে (বা বিজ্ঞাপন শেষ হলে) রিওয়ার্ড হবে না।
+//  বোনাস পাওয়ার পর AD_REWARD_COOLDOWN (৬) সেকেন্ড পর্যন্ত সব অ্যাড বাটন
+//  লক থাকে — এর মধ্যে পরের বিজ্ঞাপন দেখা যায় না।
 // ============================================================
-function AdBox({ slot, index, done, limit, reward, sym, onAdDone }) {
+function AdBox({ slot, index, done, limit, reward, sym, cooldown, onAdDone }) {
     const [loading, setLoading] = useState(false);
     const [active, setActive] = useState(false);
     const [count, setCount] = useState(AD_WATCH_SECONDS);
     const [adDone, setAdDone] = useState(false);
-    const [phase, setPhase] = useState('watch'); // watch | claim | cancelled
+    const [phase, setPhase] = useState('watch'); // watch | claim | success | cancelled
     const lockRef = useRef(false);
     const timerRef = useRef(null);
     const endRef = useRef(0);
@@ -1123,6 +1136,7 @@ function AdBox({ slot, index, done, limit, reward, sym, onAdDone }) {
     const finished = done >= limit;
     const rewardNum = Number(reward || 0);
     const showReward = rewardNum > 0;
+    const cooldownLeft = Number(cooldown || 0);
 
     const cleanup = useCallback(() => {
         clearInterval(timerRef.current);
@@ -1150,7 +1164,7 @@ function AdBox({ slot, index, done, limit, reward, sym, onAdDone }) {
                     const ok = await onAdDone(slot.id);
                     if (ok) {
                         try { tg.HapticFeedback.notificationOccurred('success'); } catch {}
-                        setTimeout(cleanup, 1500);
+                        setPhase('success');
                     } else {
                         setPhase('cancelled');
                         setTimeout(cleanup, 1700);
@@ -1162,6 +1176,13 @@ function AdBox({ slot, index, done, limit, reward, sym, onAdDone }) {
             })();
         }
     }, [active, phase, count, adDone, onAdDone, slot.id, cleanup]);
+
+    // বোনাস পাওয়ার পর ৬ সেকেন্ডের অপেক্ষা শেষ হলে সফল-ওভারলে বন্ধ হয়
+    useEffect(() => {
+        if (phase === 'success' && cooldownLeft <= 0) {
+            setTimeout(cleanup, 400);
+        }
+    }, [phase, cooldownLeft, cleanup]);
 
     // ব্যাকগ্রাউন্ডে গেলে/ব্রাউজার টাইমার থামালেও যেন ঠিক ১৭ সেকেন্ড হয়,
     // তাই টাইমস্ট্যাম্পের ভিত্তিতে গণনা করা হয়
@@ -1180,7 +1201,7 @@ function AdBox({ slot, index, done, limit, reward, sym, onAdDone }) {
     }
 
     async function triggerAd() {
-        if (lockRef.current || finished || active) return;
+        if (lockRef.current || finished || active || cooldownLeft > 0) return;
         lockRef.current = true;
         setLoading(true);
         try { tg.HapticFeedback.impactOccurred('light'); } catch {}
@@ -1246,11 +1267,17 @@ function AdBox({ slot, index, done, limit, reward, sym, onAdDone }) {
                     </div>
                 )}
                 <div className="ad-counter">{done}/{limit}</div>
-                <button className="ad-btn" onClick={triggerAd} disabled={loading || lockRef.current || finished || active}>
+                <button
+                    className="ad-btn"
+                    onClick={triggerAd}
+                    disabled={loading || lockRef.current || finished || active || cooldownLeft > 0}
+                >
                     {loading ? (
                         <>লোডিং...</>
                     ) : finished ? (
                         <><img src={ICONS.lock} alt="" /> সম্পন্ন</>
+                    ) : cooldownLeft > 0 ? (
+                        <><img src={ICONS.clock} alt="" /> {cooldownLeft} সে</>
                     ) : (
                         <><img src={ICONS.bolt} alt="" /> দেখুন</>
                     )}
@@ -1284,6 +1311,11 @@ function AdBox({ slot, index, done, limit, reward, sym, onAdDone }) {
                                         <div className="ad-ring-check">✓</div>
                                         <div className="ad-ring-label">যোগ হচ্ছে...</div>
                                     </>
+                                ) : phase === 'success' ? (
+                                    <>
+                                        <div className="ad-ring-check">✓</div>
+                                        <div className="ad-ring-label">বোনাস পেয়েছেন!</div>
+                                    </>
                                 ) : phase === 'cancelled' ? (
                                     <>
                                         <div className="ad-ring-cross">✕</div>
@@ -1299,12 +1331,13 @@ function AdBox({ slot, index, done, limit, reward, sym, onAdDone }) {
                         </div>
 
                         <div className="ad-overlay-title">
-                            {phase === 'claim' ? 'পুরস্কার যোগ হচ্ছে!' : phase === 'cancelled' ? 'রিওয়ার্ড যোগ হয়নি' : 'বিজ্ঞাপন চলছে'}
+                            {phase === 'claim' ? 'পুরস্কার যোগ হচ্ছে!' : phase === 'success' ? 'অভিনন্দন!' : phase === 'cancelled' ? 'রিওয়ার্ড যোগ হয়নি' : 'বিজ্ঞাপন চলছে'}
                         </div>
 
                         <div className="ad-overlay-status">
                             {phase === 'claim' && 'আপনার ব্যালেন্সে পুরস্কার যুক্ত হচ্ছে...'}
                             {phase === 'cancelled' && 'বিজ্ঞাপনটি সম্পূর্ণ দেখতে হবে, তার আগে বন্ধ করলে ব্যালেন্সে টাকা যোগ হবে না।'}
+                            {phase === 'success' && `বোনাস আপনার ব্যালেন্সে যোগ হয়েছে। পরের বিজ্ঞাপনের জন্য ${Math.max(1, cooldownLeft)} সেকেন্ড অপেক্ষা করুন।`}
                             {phase === 'watch' && (adDone
                                 ? 'বিজ্ঞাপন শেষ! সম্পূর্ণ ১৭ সেকেন্ড পূরণ করতে আরও একটু অপেক্ষা করুন...'
                                 : 'বিজ্ঞাপন সম্পূর্ণ না হওয়া পর্যন্ত অপেক্ষা করুন — পুরো ১৭ সেকেন্ড দেখতে হবে।')}
@@ -1322,6 +1355,9 @@ function AdBox({ slot, index, done, limit, reward, sym, onAdDone }) {
                                     <div className="ad-overlay-pulse" />
                                     সম্পূর্ণ বিজ্ঞাপন দেখলেই কেবল ব্যালেন্স যোগ হবে।
                                 </>
+                            )}
+                            {phase === 'success' && (
+                                <><img src={ICONS.check} alt="" style={{ width: 14, height: 14, verticalAlign: '-2px' }} /> নতুন বিজ্ঞাপন {Math.max(1, cooldownLeft)} সেকেন্ড পরে দেখা যাবে।</>
                             )}
                         </div>
                     </div>
@@ -1674,6 +1710,30 @@ export default function App() {
     const toastTimer = useRef(null);
     const withdrawLock = useRef(false);
 
+    // বিজ্ঞাপন দেখে বোনাস পাওয়ার পর পরের বিজ্ঞাপনের আগে ৬ সেকেন্ডের বিরতি
+    // (AD_REWARD_COOLDOWN)। টাইমস্ট্যাম্প-ভিত্তিক, তাই ব্যাকগ্রাউন্ডে গেলেও
+    // সময় সঠিক থাকে। এটি UI-বিরতি — রিওয়ার্ড সার্ভার-সাইডেই যাচাই হয়।
+    const [adCooldown, setAdCooldown] = useState(0);
+    const cooldownEndRef = useRef(0);
+    const cooldownTimerRef = useRef(null);
+
+    const startAdCooldown = useCallback(() => {
+        cooldownEndRef.current = Date.now() + AD_REWARD_COOLDOWN * 1000;
+        const tick = () => {
+            const left = Math.max(0, Math.ceil((cooldownEndRef.current - Date.now()) / 1000));
+            setAdCooldown(left);
+            if (left <= 0) {
+                clearInterval(cooldownTimerRef.current);
+                cooldownTimerRef.current = null;
+            }
+        };
+        tick();
+        clearInterval(cooldownTimerRef.current);
+        cooldownTimerRef.current = setInterval(tick, 250);
+    }, []);
+
+    useEffect(() => () => clearInterval(cooldownTimerRef.current), []);
+
     const showToast = useCallback((type, msg) => {
         setToast({ show: true, type, msg });
         try { tg.HapticFeedback.impactOccurred('light'); } catch {}
@@ -1842,6 +1902,7 @@ export default function App() {
             return next;
         });
         showToast('success', `+${rwrd} ${appState.config.currencySymbol || 'টাকা'} পুরস্কার!`);
+        startAdCooldown();
         return true;
     }
 
@@ -2079,7 +2140,7 @@ export default function App() {
 
                     <main>
                         {activePage === 'home'     && <HomePage     appState={appState} onCopy={handleCopy} onShare={handleShare} />}
-                        {activePage === 'earn'     && <EarnPage     appState={appState} onAdDone={handleAdDone} onTaskBegin={handleTaskBegin} />}
+                        {activePage === 'earn'     && <EarnPage     appState={appState} onAdDone={handleAdDone} onTaskBegin={handleTaskBegin} adCooldown={adCooldown} />}
                         {activePage === 'mission'  && <MissionPage  appState={appState} onClaimMission={handleClaimMission} />}
                         {activePage === 'withdraw' && <WithdrawPage appState={appState} onWithdraw={handleWithdraw} />}
                     </main>
