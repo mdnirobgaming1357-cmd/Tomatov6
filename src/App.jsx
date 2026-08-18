@@ -756,7 +756,7 @@ async function apiCall(action, method = 'GET', body = null) {
             if (INIT_DATA && action !== 'getConfig') url += `&initData=${encodeURIComponent(INIT_DATA)}`;
             if (body) Object.keys(body).forEach(k => (url += `&${k}=${encodeURIComponent(body[k])}`));
         }
-        const opts = { method };
+        const opts = { method, cache: 'no-store' };
         if (method !== 'GET') {
             opts.headers = { 'Content-Type': 'application/json' };
             opts.body = JSON.stringify({ initData: INIT_DATA, ...(body || {}) });
@@ -1456,9 +1456,15 @@ export default function App() {
     // পরিবর্তন করলে অ্যাপ বন্ধ-খোলা বা ক্যাশ ক্লিয়ার না করেই প্রতি ১৫
     // সেকেন্ড পরপর ব্যাকগ্রাউন্ডে সবশেষ config নিয়ে আসে ও নিঃশব্দে আপডেট
     // করে — ইউজারের কোনো ইন্টারাপশন হয় না, ব্যালেন্স/হিস্টোরি স্পর্শ করে না।
+    //
+    // মোবাইলে অ্যাপ ব্যাকগ্রাউন্ডে গেলে ব্রাউজার/Telegram টাইমার থামিয়ে
+    // দেয়, তাই শুধু ইন্টারভ্যালের ভরসায় না থেকে — অ্যাপ আবার ফোরগ্রাউন্ডে
+    // ফিরলেই (visibilitychange/focus) সাথে সাথে একবার জোর করে রিফ্রেশ
+    // করানো হয়, যাতে ফিরে আসার পর ১৫ সেকেন্ড অপেক্ষা করতে না হয়।
     useEffect(() => {
         if (!appReady) return;
-        const pollId = setInterval(async () => {
+
+        const refreshConfig = async () => {
             const freshConfig = await apiCall('getConfig');
             if (!freshConfig) return;
             setAppState(prev => {
@@ -1467,8 +1473,21 @@ export default function App() {
                 return next;
             });
             if (freshConfig.adSlots) loadAdScripts(freshConfig.adSlots);
-        }, 15000);
-        return () => clearInterval(pollId);
+        };
+
+        const pollId = setInterval(refreshConfig, 15000);
+
+        const handleVisible = () => {
+            if (document.visibilityState === 'visible') refreshConfig();
+        };
+        document.addEventListener('visibilitychange', handleVisible);
+        window.addEventListener('focus', refreshConfig);
+
+        return () => {
+            clearInterval(pollId);
+            document.removeEventListener('visibilitychange', handleVisible);
+            window.removeEventListener('focus', refreshConfig);
+        };
     }, [appReady]);
 
     // এডমিন যে network + zone/block id (config.adSlots) বসাবে তার
