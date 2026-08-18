@@ -12,11 +12,13 @@
  *   3. Ad নেটওয়ার্ক — Monetag ও Adsgram দুটোই সাপোর্ট করে, এডমিন শুধু
  *      network + zone/block id বসিয়ে দিলেই কাজ করবে, কোনো কোড
  *      পরিবর্তন লাগবে না
- *   4. বিজ্ঞাপন দেখার ১৪ সেকেন্ড কাউন্টডাউন — "দেখুন" বাটন ক্লিক করলেই
- *      সাথে সাথে শুরু হয়। পুরো ১৪ সেকেন্ড বিজ্ঞাপন সম্পূর্ণ দেখতে হবে,
+ *   4. বিজ্ঞাপন দেখার ১৭ সেকেন্ড কাউন্টডাউন — "দেখুন" বাটন ক্লিক করলেই
+ *      সাথে সাথে শুরু হয়। পুরো ১৭ সেকেন্ড বিজ্ঞাপন সম্পূর্ণ দেখতে হবে,
  *      তার আগে বিজ্ঞাপন বন্ধ করলে ব্যালেন্সে রিওয়ার্ড যোগ হবে না।
- *      প্রতি বিজ্ঞাপনে কত টাকা পাওয়া যাবে (slot.reward → config.adReward
- *      → ডিফল্ট) তাও সুন্দরভাবে দেখানো হয়।
+ *      প্রতি বিজ্ঞাপনে কত টাকা পাওয়া যাবে — admin যেই ফিল্ডে/ফরম্যাটে
+ *      বসান (slot.reward / slot.amount / slot.price / slot.coins /
+ *      config.adReward, এমনকি "৩৳" বা বাংলা সংখ্যাতেও) সেই আসল মানই
+ *      দেখানো হয়, কোনো ডিফল্ট/জাল দাম নয়।
  * ============================================================
  */
 
@@ -29,11 +31,22 @@ const API_URL = "https://www.gajarbotol.site/nirob/config.php";
 
 // বিজ্ঞাপন দেখার ন্যূনতম সময় (সেকেন্ড) — পুরোটা না দেখলে রিওয়ার্ড ব্যালেন্সে
 // যোগ হবে না। ক্লিকের সাথে সাথে এই কাউন্টডাউন শুরু হয়।
-const AD_WATCH_SECONDS = 14;
+const AD_WATCH_SECONDS = 17;
 
-// প্রতি বিজ্ঞাপনে রিওয়ার্ড: admin slot.reward দিলে সেটা, না থাকলে
-// config.adReward, দুটোই না থাকলে এই ডিফল্ট মান ব্যবহার হয়।
-const DEFAULT_AD_REWARD = 0.5;
+// admin যে ফরম্যাটেই রিওয়ার্ড বসাক না কেন (3, "3", "৩৳", "3.00" ইত্যাদি)
+// সবকিছু থেকে আসল সংখ্যা বের করা হয়। কিছু না পাওয়া গেলে NaN — ফলে
+// কোনো ডিফল্ট/জাল দাম কখনো দেখানো হয় না (সব অরিজিনাল)।
+const BN_DIGITS = { '০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9' };
+function parseAmount(v) {
+    if (v == null || v === '') return NaN;
+    if (typeof v === 'number') return v;
+    let s = String(v).replace(/[০-৯]/g, d => BN_DIGITS[d]);
+    const n = Number(s);
+    if (!isNaN(n)) return n;
+    s = s.replace(/[^\d.]/g, '');
+    if (!s) return NaN;
+    return Number(s);
+}
 
 // ============================================================
 //  3D Twemoji icons
@@ -1018,11 +1031,22 @@ function EarnPage({ appState, onAdDone, onTaskBegin }) {
     const tasks = cfg.webTasks || {};
     const pendingTasks = [], completedTasks = [];
 
-    // প্রতি বিজ্ঞাপনের রিওয়ার্ড: slot.reward → config.adReward → ডিফল্ট
+    // প্রতি বিজ্ঞাপনের রিওয়ার্ড — admin যেই ফিল্ড/ফরম্যাটে বসাক না কেন
+    // (slot.reward / slot.amount / slot.price / slot.coins / slot.adReward
+    // → config.adReward / rewardPerAd / perAdReward), আসল মানই দেখানো হয়।
+    // কোনো মান পাওয়া না গেলে 0 — অর্থাৎ জাল/ডিফল্ট দাম দেখানো হয় না।
     const getAdReward = (slot) => {
-        if (slot.reward != null && !isNaN(Number(slot.reward))) return Number(slot.reward);
-        if (cfg.adReward != null && !isNaN(Number(cfg.adReward))) return Number(cfg.adReward);
-        return DEFAULT_AD_REWARD;
+        const slotKeys = ['reward', 'amount', 'price', 'coins', 'adReward', 'rewardAmount', 'bonus', 'value'];
+        for (const k of slotKeys) {
+            const v = parseAmount(slot[k]);
+            if (!isNaN(v) && v > 0) return v;
+        }
+        const cfgKeys = ['adReward', 'rewardPerAd', 'perAdReward', 'adRewardAmount', 'adRewardValue'];
+        for (const k of cfgKeys) {
+            const v = parseAmount(cfg[k]);
+            if (!isNaN(v) && v > 0) return v;
+        }
+        return 0;
     };
 
     Object.keys(tasks).forEach(k => {
@@ -1081,8 +1105,8 @@ function EarnPage({ appState, onAdDone, onTaskBegin }) {
 
 // ============================================================
 //  Ad Box — Monetag ও Adsgram দুটোই সাপোর্ট করে, network + id দিয়েই
-//  কাজ করে। "দেখুন" বাটন ক্লিক করলেই সাথে সাথে ১৪ সেকেন্ডের কাউন্টডাউন
-//  শুরু হয় — পুরো ১৪ সেকেন্ড + বিজ্ঞাপন সম্পূর্ণ দেখলেই কেবল রিওয়ার্ড
+//  কাজ করে। "দেখুন" বাটন ক্লিক করলেই সাথে সাথে ১৭ সেকেন্ডের কাউন্টডাউন
+//  শুরু হয় — পুরো ১৭ সেকেন্ড + বিজ্ঞাপন সম্পূর্ণ দেখলেই কেবল রিওয়ার্ড
 //  ব্যালেন্সে যোগ হয়। আগে বন্ধ করলে (বা বিজ্ঞাপন শেষ হলে) রিওয়ার্ড হবে না।
 // ============================================================
 function AdBox({ slot, index, done, limit, reward, sym, onAdDone }) {
@@ -1139,7 +1163,7 @@ function AdBox({ slot, index, done, limit, reward, sym, onAdDone }) {
         }
     }, [active, phase, count, adDone, onAdDone, slot.id, cleanup]);
 
-    // ব্যাকগ্রাউন্ডে গেলে/ব্রাউজার টাইমার থামালেও যেন ঠিক ১৪ সেকেন্ড হয়,
+    // ব্যাকগ্রাউন্ডে গেলে/ব্রাউজার টাইমার থামালেও যেন ঠিক ১৭ সেকেন্ড হয়,
     // তাই টাইমস্ট্যাম্পের ভিত্তিতে গণনা করা হয়
     function startCountdown() {
         endRef.current = Date.now() + AD_WATCH_SECONDS * 1000;
@@ -1188,7 +1212,7 @@ function AdBox({ slot, index, done, limit, reward, sym, onAdDone }) {
 
             // Adsgram-এর মতো SDK promise দিলে সম্পন্ন হওয়া পর্যন্ত অপেক্ষা।
             // Monetag-এর show_() কোনো promise দেয় না — সে ক্ষেত্রে কাউন্টডাউনই
-            // মূল নিয়ন্ত্রণ (১৪ সেকেন্ড) হিসেবে কাজ করে।
+            // মূল নিয়ন্ত্রণ (১৭ সেকেন্ড) হিসেবে কাজ করে।
             if (providerFunc && typeof providerFunc.then === 'function') {
                 const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 90000));
                 await Promise.race([providerFunc, timeout]);
@@ -1282,8 +1306,8 @@ function AdBox({ slot, index, done, limit, reward, sym, onAdDone }) {
                             {phase === 'claim' && 'আপনার ব্যালেন্সে পুরস্কার যুক্ত হচ্ছে...'}
                             {phase === 'cancelled' && 'বিজ্ঞাপনটি সম্পূর্ণ দেখতে হবে, তার আগে বন্ধ করলে ব্যালেন্সে টাকা যোগ হবে না।'}
                             {phase === 'watch' && (adDone
-                                ? 'বিজ্ঞাপন শেষ! সম্পূর্ণ ১৪ সেকেন্ড পূরণ করতে আরও একটু অপেক্ষা করুন...'
-                                : 'বিজ্ঞাপন সম্পূর্ণ না হওয়া পর্যন্ত অপেক্ষা করুন — পুরো ১৪ সেকেন্ড দেখতে হবে।')}
+                                ? 'বিজ্ঞাপন শেষ! সম্পূর্ণ ১৭ সেকেন্ড পূরণ করতে আরও একটু অপেক্ষা করুন...'
+                                : 'বিজ্ঞাপন সম্পূর্ণ না হওয়া পর্যন্ত অপেক্ষা করুন — পুরো ১৭ সেকেন্ড দেখতে হবে।')}
                         </div>
 
                         {showReward && (
