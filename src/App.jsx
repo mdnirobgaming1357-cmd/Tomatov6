@@ -12,19 +12,6 @@
  *   3. Ad নেটওয়ার্ক — Monetag ও Adsgram দুটোই সাপোর্ট করে, এডমিন শুধু
  *      network + zone/block id বসিয়ে দিলেই কাজ করবে, কোনো কোড
  *      পরিবর্তন লাগবে না
- *   4. বিজ্ঞাপন দেখার ১৭ সেকেন্ড কাউন্টডাউন — "দেখুন" বাটন ক্লিক করলেই
- *      সাথে সাথে শুরু হয়। পুরো ১৭ সেকেন্ড বিজ্ঞাপন সম্পূর্ণ দেখতে হবে,
- *      তার আগে বিজ্ঞাপন বন্ধ করলে ব্যালেন্সে রিওয়ার্ড যোগ হবে না।
- *      প্রতি বিজ্ঞাপনে কত টাকা পাওয়া যাবে — admin যেই ফিল্ডে/ফরম্যাটে
- *      বসান (slot.reward / slot.amount / slot.price / slot.coins /
- *      config.adReward, এমনকি "৩৳" বা বাংলা সংখ্যাতেও) সেই আসল মানই
- *      দেখানো হয়, কোনো ডিফল্ট/জাল দাম নয়।
- *   5. বোনাস পাওয়ার পর বাটনে ৭ সেকেন্ড কাউন্টডাউন — বিজ্ঞাপন দেখে বোনাস
- *      ব্যালেন্সে যোগ হওয়ার পর যে স্লটটি দেখানো হয়েছে তার বাটনের ওপরেই
- *      (কোনো ওভারলে নয়) ৭ সেকেন্ডের কাউন্টডাউন চলে — শেষ হলে ওই স্লটে
- *      আবার নতুন বিজ্ঞাপন দেখা যায়।
- *      নিরাপত্তা: টাকা ও ব্যালেন্স সবসময় সার্ভার যাচাই করে যোগ হয়,
- *      ফ্রন্টএন্ডে কোনো ডাটাবেজ/রিওয়ার্ড-জাল করার কোড নেই।
  * ============================================================
  */
 
@@ -34,31 +21,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 //  CONFIG
 // ============================================================
 const API_URL = "https://www.gajarbotol.site/nirob/config.php";
-
-// বিজ্ঞাপন দেখার ন্যূনতম সময় (সেকেন্ড) — পুরোটা না দেখলে রিওয়ার্ড ব্যালেন্সে
-// যোগ হবে না। ক্লিকের সাথে সাথে এই কাউন্টডাউন শুরু হয়।
-const AD_WATCH_SECONDS = 17;
-
-// বিজ্ঞাপন দেখে বোনাস পাওয়ার পর ওই স্লটের বাটনের ওপরেই এই কয়েক সেকেন্ডের
-// কাউন্টডাউন দেখানো হয় (নতুন বিজ্ঞাপন দেখার আগে)। এটি শুধু UI-লেভেলের
-// বিরতি — আসল রিওয়ার্ড সবসময় সার্ভার (`claimAdReward`) যাচাই করে ব্যালেন্সে
-// যোগ হয়, তাই ফ্রন্টএন্ডে কোনো টাকা/ডাটাবেজ জাল করার সুযোগ নেই।
-const AD_REWARD_COOLDOWN = 7;
-
-// admin যে ফরম্যাটেই রিওয়ার্ড বসাক না কেন (3, "3", "৩৳", "3.00" ইত্যাদি)
-// সবকিছু থেকে আসল সংখ্যা বের করা হয়। কিছু না পাওয়া গেলে NaN — ফলে
-// কোনো ডিফল্ট/জাল দাম কখনো দেখানো হয় না (সব অরিজিনাল)।
-const BN_DIGITS = { '০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9' };
-function parseAmount(v) {
-    if (v == null || v === '') return NaN;
-    if (typeof v === 'number') return v;
-    let s = String(v).replace(/[০-৯]/g, d => BN_DIGITS[d]);
-    const n = Number(s);
-    if (!isNaN(n)) return n;
-    s = s.replace(/[^\d.]/g, '');
-    if (!s) return NaN;
-    return Number(s);
-}
 
 // ============================================================
 //  3D Twemoji icons
@@ -523,7 +485,8 @@ const css = `
     margin:0 auto 12px;
   }
   .ad-icon img { width:26px; height:26px; }
-  .ad-box h4 { font-size:0.88rem; font-weight:600; margin-bottom:6px; }
+  .ad-box h4 { font-size:0.88rem; font-weight:600; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ad-reward { font-size:0.72rem; font-weight:700; color:var(--green); margin-bottom:8px; }
   .ad-counter {
     font-size:0.7rem; background:var(--surface2); border:1px solid var(--border);
     color:var(--text-dim); padding:3px 10px; border-radius:20px;
@@ -541,106 +504,6 @@ const css = `
   .ad-btn:disabled {
     background:var(--surface2); color:var(--text-dim); cursor:not-allowed;
     border:1px solid var(--border); box-shadow:none;
-  }
-  .ad-btn.ad-btn-cooldown {
-    background:var(--surface2); color:var(--gold);
-    border:1px solid rgba(245,198,107,0.4); cursor:not-allowed;
-    animation:cooldownPulse 1s ease-in-out infinite;
-  }
-  @keyframes cooldownPulse {
-    0%,100% { box-shadow:0 0 8px rgba(245,198,107,0.1); }
-    50%     { box-shadow:0 0 20px rgba(245,198,107,0.4); }
-  }
-  .ad-btn.ad-btn-cooldown img { filter:brightness(0) saturate(100%) invert(80%) sepia(38%) saturate(500%) hue-rotate(-10deg); }
-  .ad-reward {
-    display:inline-flex; align-items:center; gap:5px;
-    font-size:0.82rem; font-weight:800; color:var(--green);
-    background:rgba(52,211,153,0.1); border:1px solid rgba(52,211,153,0.22);
-    padding:4px 12px; border-radius:20px; margin-bottom:10px;
-  }
-  .ad-reward img { width:14px; height:14px; }
-
-  /* ===== AD WATCH COUNTDOWN OVERLAY ===== */
-  .ad-overlay {
-    position:fixed; inset:0; z-index:400;
-    background:rgba(4,3,9,0.78);
-    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
-    display:flex; align-items:center; justify-content:center;
-    animation:fadeUp 0.25s ease both;
-  }
-  .ad-overlay-card {
-    position:relative; overflow:hidden;
-    width:min(86vw, 340px); text-align:center;
-    background: linear-gradient(170deg, #1e1840 0%, #141224 55%, #1a1430 100%);
-    border:1px solid var(--border2); border-radius:28px;
-    padding:32px 22px 24px;
-    box-shadow:0 30px 80px rgba(0,0,0,0.6), var(--glow-violet);
-  }
-  .ad-overlay-glow {
-    position:absolute; inset:0; pointer-events:none;
-    background: radial-gradient(ellipse at 50% 0%, rgba(124,108,246,0.25) 0%, transparent 55%);
-  }
-  .ad-ring-wrap {
-    position:relative; width:168px; height:168px; margin:0 auto 18px;
-  }
-  .ad-ring-svg { width:100%; height:100%; transform:rotate(-90deg); }
-  .ad-ring-track { fill:none; stroke:rgba(255,255,255,0.07); stroke-width:10; }
-  .ad-ring-progress {
-    fill:none; stroke-width:10; stroke-linecap:round;
-    transition:stroke-dashoffset 1s linear;
-    filter:drop-shadow(0 0 10px rgba(124,108,246,0.6));
-  }
-  .ad-ring-center {
-    position:absolute; inset:0; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; gap:2px;
-  }
-  .ad-ring-num {
-    font-size:2.7rem; font-weight:900; color:var(--text); line-height:1;
-    text-shadow:0 0 30px rgba(124,108,246,0.5);
-  }
-  .ad-ring-label { font-size:0.66rem; color:var(--text-dim); font-weight:600; letter-spacing:1px; }
-  .ad-ring-check, .ad-ring-cross {
-    width:58px; height:58px; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    font-size:1.7rem; font-weight:900; line-height:1;
-  }
-  .ad-ring-check {
-    background:rgba(52,211,153,0.15); border:2px solid rgba(52,211,153,0.4);
-    color:var(--green); box-shadow:0 0 30px rgba(52,211,153,0.25);
-    animation:badgePop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
-  }
-  .ad-ring-cross {
-    background:rgba(255,107,107,0.15); border:2px solid rgba(255,107,107,0.4);
-    color:var(--danger); box-shadow:0 0 30px rgba(255,107,107,0.25);
-    animation:badgePop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
-  }
-  .ad-overlay-title { font-size:1.05rem; font-weight:800; margin-bottom:6px; position:relative; }
-  .ad-overlay-status {
-    font-size:0.82rem; color:var(--text-mid); line-height:1.6;
-    min-height:40px; position:relative; margin-top:2px;
-  }
-  .ad-overlay-reward {
-    display:inline-flex; align-items:center; gap:6px;
-    background:rgba(245,198,107,0.1); border:1px solid rgba(245,198,107,0.25);
-    color:var(--gold); font-weight:800; font-size:0.85rem;
-    padding:8px 16px; border-radius:20px; margin-top:8px; position:relative;
-  }
-  .ad-overlay-reward img { width:16px; height:16px; }
-  .ad-overlay-note {
-    font-size:0.7rem; color:var(--text-dim); line-height:1.5;
-    margin-top:14px; position:relative;
-  }
-  .ad-overlay-pulse {
-    width:20px; height:20px; margin:0 auto 10px; position:relative;
-  }
-  .ad-overlay-pulse::before, .ad-overlay-pulse::after {
-    content:''; position:absolute; inset:0; border-radius:50%;
-    background:rgba(124,108,246,0.35); animation:adPulse 1.4s ease-out infinite;
-  }
-  .ad-overlay-pulse::after { animation-delay:0.7s; }
-  @keyframes adPulse {
-    0%   { transform:scale(0.4); opacity:1; }
-    100% { transform:scale(2.4); opacity:0; }
   }
 
   /* ===================== TASKS ===================== */
@@ -1042,7 +905,7 @@ function HomePage({ appState, onCopy, onShare }) {
 // ============================================================
 //  Earn Page
 // ============================================================
-function EarnPage({ appState, onAdDone, onTaskBegin, adCooldowns }) {
+function EarnPage({ appState, onAdDone, onTaskBegin }) {
     const cfg   = appState.config;
     const u     = appState.user;
     const sym   = cfg.currencySymbol || 'টাকা';
@@ -1052,24 +915,6 @@ function EarnPage({ appState, onAdDone, onTaskBegin, adCooldowns }) {
     const today = new Date().toISOString().slice(0, 10);
     const tasks = cfg.webTasks || {};
     const pendingTasks = [], completedTasks = [];
-
-    // প্রতি বিজ্ঞাপনের রিওয়ার্ড — admin যেই ফিল্ড/ফরম্যাটে বসাক না কেন
-    // (slot.reward / slot.amount / slot.price / slot.coins / slot.adReward
-    // → config.adReward / rewardPerAd / perAdReward), আসল মানই দেখানো হয়।
-    // কোনো মান পাওয়া না গেলে 0 — অর্থাৎ জাল/ডিফল্ট দাম দেখানো হয় না।
-    const getAdReward = (slot) => {
-        const slotKeys = ['reward', 'amount', 'price', 'coins', 'adReward', 'rewardAmount', 'bonus', 'value'];
-        for (const k of slotKeys) {
-            const v = parseAmount(slot[k]);
-            if (!isNaN(v) && v > 0) return v;
-        }
-        const cfgKeys = ['adReward', 'rewardPerAd', 'perAdReward', 'adRewardAmount', 'adRewardValue'];
-        for (const k of cfgKeys) {
-            const v = parseAmount(cfg[k]);
-            if (!isNaN(v) && v > 0) return v;
-        }
-        return 0;
-    };
 
     Object.keys(tasks).forEach(k => {
         const t = tasks[k];
@@ -1095,13 +940,9 @@ function EarnPage({ appState, onAdDone, onTaskBegin, adCooldowns }) {
                 <div className="ad-grid">
                     {slots.map((s, i) => (
                         <AdBox
-                            key={s.id} slot={s} index={i}
+                            key={s.id} slot={s} index={i} sym={sym}
                             done={u.lastActive === today ? (u.dailyAds?.[s.id] || 0) : 0}
-                            limit={limit}
-                            reward={getAdReward(s)}
-                            sym={sym}
-                            cooldown={adCooldowns?.[s.id] || 0}
-                            onAdDone={onAdDone}
+                            limit={limit} onAdDone={onAdDone}
                         />
                     ))}
                 </div>
@@ -1127,251 +968,68 @@ function EarnPage({ appState, onAdDone, onTaskBegin, adCooldowns }) {
 }
 
 // ============================================================
-//  Ad Box — Monetag ও Adsgram দুটোই সাপোর্ট করে, network + id দিয়েই
-//  কাজ করে। "দেখুন" বাটন ক্লিক করলেই সাথে সাথে ১৭ সেকেন্ডের কাউন্টডাউন
-//  শুরু হয় — পুরো ১৭ সেকেন্ড + বিজ্ঞাপন সম্পূর্ণ দেখলেই কেবল রিওয়ার্ড
-//  ব্যালেন্সে যোগ হয়। আগে বন্ধ করলে (বা বিজ্ঞাপন শেষ হলে) রিওয়ার্ড হবে না।
-//  বোনাস পাওয়ার পর AD_REWARD_COOLDOWN (৬) সেকেন্ড পর্যন্ত সব অ্যাড বাটন
-//  লক থাকে — এর মধ্যে পরের বিজ্ঞাপন দেখা যায় না।
+//  Ad Box — supports Monetag & Adsgram, controlled purely by
+//  admin-configured `network` + `id` (zone id / block id)
 // ============================================================
-function AdBox({ slot, index, done, limit, reward, sym, cooldown, onAdDone }) {
+function AdBox({ slot, index, done, limit, onAdDone, sym }) {
     const [loading, setLoading] = useState(false);
-    const [active, setActive] = useState(false);
-    const [count, setCount] = useState(AD_WATCH_SECONDS);
-    const [adDone, setAdDone] = useState(false);
-    const [phase, setPhase] = useState('watch'); // watch | claim | success | cancelled
     const lockRef = useRef(false);
-    const timerRef = useRef(null);
-    const endRef = useRef(0);
-    const finishedRef = useRef(false);
-
-    const finished = done >= limit;
-    const rewardNum = Number(reward || 0);
-    const showReward = rewardNum > 0;
-    const cooldownLeft = Number(cooldown || 0);
-
-    const cleanup = useCallback(() => {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-        lockRef.current = false;
-        finishedRef.current = false;
-        setActive(false);
-        setLoading(false);
-        setCount(AD_WATCH_SECONDS);
-        setAdDone(false);
-        setPhase('watch');
-    }, []);
-
-    useEffect(() => cleanup, [cleanup]);
-
-    // কাউন্টডাউন (০) + বিজ্ঞাপন সম্পন্ন — দুটোই পূর্ণ হলেই পুরস্কার দাবি হয়
-    useEffect(() => {
-        if (active && phase === 'watch' && count === 0 && adDone && !finishedRef.current) {
-            finishedRef.current = true;
-            clearInterval(timerRef.current);
-            timerRef.current = null;
-            setPhase('claim');
-            (async () => {
-                try {
-                    const ok = await onAdDone(slot.id);
-                    if (ok) {
-                        try { tg.HapticFeedback.notificationOccurred('success'); } catch {}
-                        setPhase('success');
-                        // ওভারলে অল্প সময় দেখিয়ে বন্ধ — তারপর ওই স্লটের
-                        // বাটনের ওপরেই ৭ সেকেন্ডের কাউন্টডাউন চলবে
-                        setTimeout(cleanup, 1300);
-                    } else {
-                        setPhase('cancelled');
-                        setTimeout(cleanup, 1700);
-                    }
-                } catch {
-                    setPhase('cancelled');
-                    setTimeout(cleanup, 1700);
-                }
-            })();
-        }
-    }, [active, phase, count, adDone, onAdDone, slot.id, cleanup]);
-
-    // ব্যাকগ্রাউন্ডে গেলে/ব্রাউজার টাইমার থামালেও যেন ঠিক ১৭ সেকেন্ড হয়,
-    // তাই টাইমস্ট্যাম্পের ভিত্তিতে গণনা করা হয়
-    function startCountdown() {
-        endRef.current = Date.now() + AD_WATCH_SECONDS * 1000;
-        const tick = () => {
-            const left = Math.max(0, Math.ceil((endRef.current - Date.now()) / 1000));
-            setCount(left);
-            if (left <= 0) {
-                clearInterval(timerRef.current);
-                timerRef.current = null;
-            }
-        };
-        tick();
-        timerRef.current = setInterval(tick, 200);
-    }
 
     async function triggerAd() {
-        if (lockRef.current || finished || active || cooldownLeft > 0) return;
-        lockRef.current = true;
-        setLoading(true);
-        try { tg.HapticFeedback.impactOccurred('light'); } catch {}
+        if (lockRef.current || done >= limit) return;
+        if (!lockRef.current) {
+            lockRef.current = true;
+            setLoading(true);
+            tg.HapticFeedback.impactOccurred('light');
+            try {
+                let providerFunc;
 
-        setActive(true);
-        setPhase('watch');
-        setAdDone(false);
-        startCountdown();
+                if (slot.network === 'monetag' && window[`show_${slot.id}`]) {
+                    providerFunc = window[`show_${slot.id}`]();
 
-        try {
-            let providerFunc;
+                } else if (slot.network === 'adsgram' && window.Adsgram) {
+                    if (!window.__adsgramControllers) window.__adsgramControllers = {};
+                    if (!window.__adsgramControllers[slot.id]) {
+                        window.__adsgramControllers[slot.id] = window.Adsgram.init({ blockId: slot.id });
+                    }
+                    providerFunc = window.__adsgramControllers[slot.id].show();
 
-            if (slot.network === 'monetag' && window[`show_${slot.id}`]) {
-                providerFunc = window[`show_${slot.id}`]();
-            } else if (slot.network === 'adsgram' && window.Adsgram) {
-                if (!window.__adsgramControllers) window.__adsgramControllers = {};
-                if (!window.__adsgramControllers[slot.id]) {
-                    window.__adsgramControllers[slot.id] = window.Adsgram.init({ blockId: slot.id });
+                } else {
+                    alert('বিজ্ঞাপন নেটওয়ার্ক লোড হচ্ছে। আবার চেষ্টা করুন।');
+                    setLoading(false);
+                    lockRef.current = false;
+                    return;
                 }
-                providerFunc = window.__adsgramControllers[slot.id].show();
-            } else {
-                clearInterval(timerRef.current);
-                timerRef.current = null;
-                setPhase('cancelled');
-                try { tg.HapticFeedback.notificationOccurred('warning'); } catch {}
-                setTimeout(cleanup, 1700);
-                return;
+                await providerFunc;
+                await onAdDone(slot.id);
+                tg.HapticFeedback.notificationOccurred('success');
+            } catch {
+                // user cancelled
+            } finally {
+                setLoading(false);
+                lockRef.current = false;
             }
-
-            // Adsgram-এর মতো SDK promise দিলে সম্পন্ন হওয়া পর্যন্ত অপেক্ষা।
-            // Monetag-এর show_() কোনো promise দেয় না — সে ক্ষেত্রে কাউন্টডাউনই
-            // মূল নিয়ন্ত্রণ (১৭ সেকেন্ড) হিসেবে কাজ করে।
-            if (providerFunc && typeof providerFunc.then === 'function') {
-                const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 90000));
-                await Promise.race([providerFunc, timeout]);
-            }
-            setAdDone(true);
-        } catch {
-            // বিজ্ঞাপন আগেই বন্ধ / নেটওয়ার্ক ত্রুটি → রিওয়ার্ড নেই
-            if (finishedRef.current) return;
-            clearInterval(timerRef.current);
-            timerRef.current = null;
-            setPhase('cancelled');
-            try { tg.HapticFeedback.notificationOccurred('error'); } catch {}
-            setTimeout(cleanup, 1700);
         }
     }
 
-    const total = AD_WATCH_SECONDS;
-    const progress = total > 0 ? Math.min(1, (total - count) / total) : 1;
-    const CIRC = 2 * Math.PI * 74;
-
     return (
-        <>
-            <div className="ad-box" style={{ animationDelay: `${index * 0.08}s` }}>
-                <div className="ad-icon">
-                    <img src={ICONS.tv} alt="" />
-                </div>
-                <h4>বিজ্ঞাপন {index + 1}</h4>
-                {showReward && (
-                    <div className="ad-reward">
-                        <img src={ICONS.coin} alt="" /> +{rewardNum.toFixed(2)} {sym}
-                    </div>
-                )}
-                <div className="ad-counter">{done}/{limit}</div>
-                <button
-                    className={`ad-btn${cooldownLeft > 0 ? ' ad-btn-cooldown' : ''}`}
-                    onClick={triggerAd}
-                    disabled={loading || lockRef.current || finished || active || cooldownLeft > 0}
-                >
-                    {loading ? (
-                        <>লোডিং...</>
-                    ) : finished ? (
-                        <><img src={ICONS.lock} alt="" /> সম্পন্ন</>
-                    ) : cooldownLeft > 0 ? (
-                        <><img src={ICONS.clock} alt="" /> {cooldownLeft} সে</>
-                    ) : (
-                        <><img src={ICONS.bolt} alt="" /> দেখুন</>
-                    )}
-                </button>
+        <div className="ad-box" style={{ animationDelay: `${index * 0.08}s` }}>
+            <div className="ad-icon">
+                <img src={ICONS.tv} alt="" />
             </div>
-
-            {active && (
-                <div className="ad-overlay">
-                    <div className="ad-overlay-card">
-                        <div className="ad-overlay-glow" />
-                        <div className="ad-ring-wrap">
-                            <svg className="ad-ring-svg" viewBox="0 0 168 168">
-                                <defs>
-                                    <linearGradient id={`adGrad-${slot.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stopColor="#4f46e5" />
-                                        <stop offset="100%" stopColor="#f59e0b" />
-                                    </linearGradient>
-                                </defs>
-                                <circle className="ad-ring-track" cx="84" cy="84" r="74" />
-                                <circle
-                                    className="ad-ring-progress"
-                                    cx="84" cy="84" r="74"
-                                    stroke={`url(#adGrad-${slot.id})`}
-                                    strokeDasharray={CIRC}
-                                    strokeDashoffset={CIRC * (1 - progress)}
-                                />
-                            </svg>
-                            <div className="ad-ring-center">
-                                {phase === 'claim' ? (
-                                    <>
-                                        <div className="ad-ring-check">✓</div>
-                                        <div className="ad-ring-label">যোগ হচ্ছে...</div>
-                                    </>
-                                ) : phase === 'success' ? (
-                                    <>
-                                        <div className="ad-ring-check">✓</div>
-                                        <div className="ad-ring-label">বোনাস পেয়েছেন!</div>
-                                    </>
-                                ) : phase === 'cancelled' ? (
-                                    <>
-                                        <div className="ad-ring-cross">✕</div>
-                                        <div className="ad-ring-label">ব্যর্থ!</div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="ad-ring-num">{count}</div>
-                                        <div className="ad-ring-label">সেকেন্ড বাকি</div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="ad-overlay-title">
-                            {phase === 'claim' ? 'পুরস্কার যোগ হচ্ছে!' : phase === 'success' ? 'অভিনন্দন!' : phase === 'cancelled' ? 'রিওয়ার্ড যোগ হয়নি' : 'বিজ্ঞাপন চলছে'}
-                        </div>
-
-                        <div className="ad-overlay-status">
-                            {phase === 'claim' && 'আপনার ব্যালেন্সে পুরস্কার যুক্ত হচ্ছে...'}
-                            {phase === 'cancelled' && 'বিজ্ঞাপনটি সম্পূর্ণ দেখতে হবে, তার আগে বন্ধ করলে ব্যালেন্সে টাকা যোগ হবে না।'}
-                            {phase === 'success' && 'বোনাস আপনার ব্যালেন্সে যোগ হয়েছে!'}
-                            {phase === 'watch' && (adDone
-                                ? 'বিজ্ঞাপন শেষ! সম্পূর্ণ ১৭ সেকেন্ড পূরণ করতে আরও একটু অপেক্ষা করুন...'
-                                : 'বিজ্ঞাপন সম্পূর্ণ না হওয়া পর্যন্ত অপেক্ষা করুন — পুরো ১৭ সেকেন্ড দেখতে হবে।')}
-                        </div>
-
-                        {showReward && (
-                            <div className="ad-overlay-reward">
-                                <img src={ICONS.coin} alt="" /> এই বিজ্ঞাপনে +{rewardNum.toFixed(2)} {sym}
-                            </div>
-                        )}
-
-                        <div className="ad-overlay-note">
-                            {phase === 'watch' && (
-                                <>
-                                    <div className="ad-overlay-pulse" />
-                                    সম্পূর্ণ বিজ্ঞাপন দেখলেই কেবল ব্যালেন্স যোগ হবে।
-                                </>
-                            )}
-                            {phase === 'success' && (
-                                <>বোনাস যোগ হয়েছে — এই বাটনে কাউন্টডাউন শেষ হলেই নতুন বিজ্ঞাপন দেখা যাবে।</>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-        </>
+            <h4>{slot.title || `বিজ্ঞাপন ${index + 1}`}</h4>
+            {slot.reward > 0 && <div className="ad-reward">+{slot.reward} {sym || 'টাকা'}</div>}
+            <div className="ad-counter">{done}/{limit}</div>
+            <button className="ad-btn" onClick={triggerAd} disabled={loading || lockRef.current || done >= limit}>
+                {loading ? (
+                    <>লোডিং...</>
+                ) : done >= limit ? (
+                    <><img src={ICONS.lock} alt="" /> সম্পন্ন</>
+                ) : (
+                    <><img src={ICONS.bolt} alt="" /> দেখুন</>
+                )}
+            </button>
+        </div>
     );
 }
 
@@ -1718,42 +1376,6 @@ export default function App() {
     const toastTimer = useRef(null);
     const withdrawLock = useRef(false);
 
-    // বিজ্ঞাপন দেখে বোনাস পাওয়ার পর ওই স্লটের বাটনের ওপরেই ৭ সেকেন্ডের
-    // কাউন্টডাউন (AD_REWARD_COOLDOWN) দেখানো হয়। টাইমস্ট্যাম্প-ভিত্তিক,
-    // তাই ব্যাকগ্রাউন্ডে গেলেও সময় সঠিক থাকে। এটি UI-বিরতি — রিওয়ার্ড
-    // সার্ভার-সাইডেই যাচাই হয়।
-    const [adCooldowns, setAdCooldowns] = useState({});
-    const cooldownEnds = useRef({});
-    const cooldownTimerRef = useRef(null);
-
-    const startAdCooldown = useCallback((slotId) => {
-        cooldownEnds.current[slotId] = Date.now() + AD_REWARD_COOLDOWN * 1000;
-        const tick = () => {
-            const next = {};
-            let activeCount = 0;
-            Object.keys(cooldownEnds.current).forEach(id => {
-                const left = Math.max(0, Math.ceil((cooldownEnds.current[id] - Date.now()) / 1000));
-                if (left <= 0) {
-                    delete cooldownEnds.current[id];
-                } else {
-                    next[id] = left;
-                    activeCount++;
-                }
-            });
-            setAdCooldowns(next);
-            if (activeCount === 0) {
-                clearInterval(cooldownTimerRef.current);
-                cooldownTimerRef.current = null;
-            }
-        };
-        tick();
-        if (!cooldownTimerRef.current) {
-            cooldownTimerRef.current = setInterval(tick, 250);
-        }
-    }, []);
-
-    useEffect(() => () => clearInterval(cooldownTimerRef.current), []);
-
     const showToast = useCallback((type, msg) => {
         setToast({ show: true, type, msg });
         try { tg.HapticFeedback.impactOccurred('light'); } catch {}
@@ -1890,18 +1512,17 @@ export default function App() {
         });
     }
 
-    // ===== AD REWARD — সফল হলে true, ব্যর্থ হলে false রিটার্ন করে, যাতে
-    // AdBox-এর কাউন্টডাউন ওভারলেতে সঠিক ফলাফল দেখানো যায় =====
+    // ===== AD REWARD =====
     const adLock = useRef(false);
     async function handleAdDone(slotId) {
-        if (adLock.current) return false;
+        if (adLock.current) return;
         adLock.current = true;
         const today = new Date().toISOString().slice(0, 10);
         const res = await apiCall('claimAdReward', 'POST', { slotId });
         adLock.current = false;
         if (!res || res.error) {
             showToast('error', res?.error || 'পুরস্কার দাবি ব্যর্থ হয়েছে।');
-            return false;
+            return;
         }
         const rwrd = res.reward;
         setAppState(prev => {
@@ -1922,8 +1543,6 @@ export default function App() {
             return next;
         });
         showToast('success', `+${rwrd} ${appState.config.currencySymbol || 'টাকা'} পুরস্কার!`);
-        startAdCooldown(slotId);
-        return true;
     }
 
     // ===== TASK REWARD — সফল/ব্যর্থ বোঝাতে boolean রিটার্ন করে, যাতে
@@ -2160,7 +1779,7 @@ export default function App() {
 
                     <main>
                         {activePage === 'home'     && <HomePage     appState={appState} onCopy={handleCopy} onShare={handleShare} />}
-                        {activePage === 'earn'     && <EarnPage     appState={appState} onAdDone={handleAdDone} onTaskBegin={handleTaskBegin} adCooldowns={adCooldowns} />}
+                        {activePage === 'earn'     && <EarnPage     appState={appState} onAdDone={handleAdDone} onTaskBegin={handleTaskBegin} />}
                         {activePage === 'mission'  && <MissionPage  appState={appState} onClaimMission={handleClaimMission} />}
                         {activePage === 'withdraw' && <WithdrawPage appState={appState} onWithdraw={handleWithdraw} />}
                     </main>
