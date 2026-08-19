@@ -983,13 +983,18 @@ function EarnPage({ appState, onAdDone, onTaskBegin }) {
 //  admin-configured `network` + `id` (zone id / block id)
 // ============================================================
 function AdBox({ slot, index, done, limit, onAdDone, sym }) {
-    const WATCH_SECONDS   = 17;
-    const COOLDOWN_SECONDS = 7;
+    const WATCH_SECONDS = 17;
 
     const [phase, setPhase] = useState('idle');      // idle | watching | cooldown
     const [countdown, setCountdown] = useState(0);
+    const [cooldownSec, setCooldownSec] = useState(7);
     const timerRef = useRef(null);
     const lockRef = useRef(false);
+
+    // কুলডাউন: ১ম এডে ৭সে, ২য় এডে ১০সে, এরপর প্রতিটিতে ৩ সেকেন্ড করে বাড়ে
+    function nextCooldown(seen) {
+        return 7 + seen * 3;
+    }
 
     function clearTimer() {
         if (timerRef.current) {
@@ -1033,6 +1038,7 @@ function AdBox({ slot, index, done, limit, onAdDone, sym }) {
         } catch { /* ignore */ }
 
         // ১৭ সেকেন্ড কাউন্টডাউন — শেষ হলে বোনাস দেওয়া হয়
+        setCooldownSec(nextCooldown(done));
         setPhase('watching');
         startCountdown(WATCH_SECONDS, completeWatch);
     }
@@ -1043,16 +1049,16 @@ function AdBox({ slot, index, done, limit, onAdDone, sym }) {
             tg.HapticFeedback.notificationOccurred('success');
         } catch { /* ignore */ }
 
-        // বোনাস দেওয়ার পরে ৭ সেকেন্ড কুলডাউন, তারপর আবার দেখা যাবে
+        // বোনাস দেওয়ার পরে নির্ধারিত কুলডাউন, তারপর আবার দেখা যাবে
         setPhase('cooldown');
-        startCountdown(COOLDOWN_SECONDS, () => {
+        startCountdown(cooldownSec, () => {
             setPhase('idle');
             setCountdown(0);
             lockRef.current = false;
         });
     }
 
-    const total = phase === 'watching' ? WATCH_SECONDS : phase === 'cooldown' ? COOLDOWN_SECONDS : 0;
+    const total = phase === 'watching' ? WATCH_SECONDS : phase === 'cooldown' ? cooldownSec : 0;
     const progress = total > 0 ? Math.min(100, Math.round(((total - countdown) / total) * 100)) : 0;
 
     return (
