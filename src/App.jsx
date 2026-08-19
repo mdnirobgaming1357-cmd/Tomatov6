@@ -978,6 +978,27 @@ function EarnPage({ appState, onAdDone, onTaskBegin }) {
     );
 }
 
+// কুলডাউন টাইম localStorage-এ সংরক্ষণ করা হয় — ইউজার অন্য পেজে গেলেও বা
+// অ্যাপ রিফ্রেশ হলেও কুলডাউন টাইম মুছে যায় না, ফিরে এসে আবার চলতে থাকে
+const AD_STATE_KEY = '__earnwallet_adstates';
+
+function readAdStates() {
+    try { return JSON.parse(localStorage.getItem(AD_STATE_KEY)) || {}; } catch { return {}; }
+}
+function writeAdStates(states) {
+    try { localStorage.setItem(AD_STATE_KEY, JSON.stringify(states)); } catch {}
+}
+function setAdState(slotId, data) {
+    const st = readAdStates();
+    st[slotId] = data;
+    writeAdStates(st);
+}
+function clearAdState(slotId) {
+    const st = readAdStates();
+    delete st[slotId];
+    writeAdStates(st);
+}
+
 // ============================================================
 //  Ad Box — supports Monetag & Adsgram, controlled purely by
 //  admin-configured `network` + `id` (zone id / block id)
@@ -1010,7 +1031,22 @@ function AdBox({ slot, index, done, limit, onAdDone, sym }) {
         }
     }
 
-    useEffect(() => () => clearTimer(), []);
+    // পেজ পরিবর্তন/রিফ্রেশের পরে ফিরে এলে আগের চলমান কুলডাউন আবার শুরু হয়
+    useEffect(() => {
+        const st = readAdStates()[slot.id];
+        if (st && st.cooldownEnd) {
+            if (st.cooldownEnd > Date.now()) {
+                updatePhase('cooldown');
+                startCountdown(st.cooldownEnd - Date.now(), () => {
+                    clearAdState(slot.id);
+                    resetToIdle();
+                });
+            } else {
+                clearAdState(slot.id);
+            }
+        }
+        return () => clearTimer();
+    }, [slot.id]);
 
     // ব্যাকগ্রাউন্ডে অ্যাপ গেলে ব্রাউজার টাইমার থামিয়ে/ধীর করে দেয়, তাই
     // setInterval-এর ভরসায় না থেকে Date.now() ভিত্তিক কাউন্টডাউন ব্যবহার করা হয়।
@@ -1034,6 +1070,7 @@ function AdBox({ slot, index, done, limit, onAdDone, sym }) {
 
     function resetToIdle() {
         clearTimer();
+        clearAdState(slot.id);
         updatePhase('idle');
         setCountdown(0);
         lockRef.current = false;
@@ -1149,9 +1186,15 @@ function AdBox({ slot, index, done, limit, onAdDone, sym }) {
             try { tg.HapticFeedback.notificationOccurred('success'); } catch {}
         } catch { /* ignore */ }
 
-        // বোনাস দেওয়ার পরে নির্দিষ্ট কুলডাউন, তারপর আবার দেখা যাবে
+        // বোনাস দেওয়ার পরে নির্দিষ্ট কুলডাউন, তারপর আবার দেখা যাবে।
+        // কুলডাউন localStorage-এ সংরক্ষিত হয় — পেজ পরিবর্তন/রিফ্রেশ হলেও
+        // টাইম মুছে যায় না, নির্ধারিত সময় পার হওয়ার আগে আবার ব্যবহার করা যাবে না
         updatePhase('cooldown');
-        startCountdown(COOLDOWN_SECONDS * 1000, resetToIdle);
+        setAdState(slot.id, { cooldownEnd: Date.now() + COOLDOWN_SECONDS * 1000 });
+        startCountdown(COOLDOWN_SECONDS * 1000, () => {
+            clearAdState(slot.id);
+            resetToIdle();
+        });
     }
 
     const total = phase === 'watching' ? WATCH_SECONDS : phase === 'cooldown' ? COOLDOWN_SECONDS : 0;
