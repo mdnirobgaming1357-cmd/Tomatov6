@@ -983,82 +983,178 @@ function EarnPage({ appState, onAdDone, onTaskBegin }) {
 //  admin-configured `network` + `id` (zone id / block id)
 // ============================================================
 function AdBox({ slot, index, done, limit, onAdDone, sym }) {
-    const WATCH_SECONDS = 17;
+    // প্রতি স্লটের জন্য ভিন্ন ওয়াচ ও কুলডাউন টাইম:
+    //   ১ম স্লট → ১৭ সেকেন্ড ওয়াচ, ৭ সেকেন্ড কুলডাউন
+    //   ২য় স্লট → ৩০ সেকেন্ড ওয়াচ, ১০ সেকেন্ড কুলডাউন
+    // এডমিন চাইলে `slot.watchSeconds` / `slot.cooldownSeconds` দিয়ে ওভাররাইড করতে পারবেন
+    const WATCH_SECONDS    = slot.watchSeconds   || (index === 0 ? 17 : index === 1 ? 30 : 17);
+    const COOLDOWN_SECONDS = slot.cooldownSeconds || (index === 0 ? 7  : index === 1 ? 10 : 7);
 
-    const [phase, setPhase] = useState('idle');      // idle | watching | cooldown
+    const [phase, setPhase] = useState('idle');      // idle | loading | watching | cooldown
     const [countdown, setCountdown] = useState(0);
-    const [cooldownSec, setCooldownSec] = useState(7);
     const timerRef = useRef(null);
     const lockRef = useRef(false);
+    const phaseRef = useRef('idle');
+    const adOpenRef = useRef(false);
+    const adFailedRef = useRef(false);
 
-    // কুলডাউন: ১ম এডে ৭সে, ২য় এডে ১০সে, এরপর প্রতিটিতে ৩ সেকেন্ড করে বাড়ে
-    function nextCooldown(seen) {
-        return 7 + seen * 3;
+    function updatePhase(p) {
+        phaseRef.current = p;
+        setPhase(p);
     }
 
     function clearTimer() {
         if (timerRef.current) {
-            clearInterval(timerRef.current);
+            clearTimeout(timerRef.current);
             timerRef.current = null;
         }
     }
 
     useEffect(() => () => clearTimer(), []);
 
-    function startCountdown(total, onDone) {
-        let sec = total;
-        setCountdown(sec);
+    // ব্যাকগ্রাউন্ডে অ্যাপ গেলে ব্রাউজার টাইমার থামিয়ে/ধীর করে দেয়, তাই
+    // setInterval-এর ভরসায় না থেকে Date.now() ভিত্তিক কাউন্টডাউন ব্যবহার করা হয়।
+    // এতে বিজ্ঞাপন শেষে ফিরে এলেও টাইমিং কখনো ভুল হয় না — বোনাস সবসময় সঠিক
+    // সময়ে যোগ হয়।
+    function startCountdown(totalMs, onDone) {
+        const endAt = Date.now() + totalMs;
         clearTimer();
-        timerRef.current = setInterval(() => {
-            sec--;
-            setCountdown(sec);
-            if (sec <= 0) {
+        const tick = () => {
+            const remaining = Math.max(0, Math.round((endAt - Date.now()) / 1000));
+            setCountdown(remaining);
+            if (remaining <= 0) {
                 clearTimer();
                 onDone();
+            } else {
+                timerRef.current = setTimeout(tick, 250);
             }
-        }, 1000);
+        };
+        tick();
+    }
+
+    function resetToIdle() {
+        clearTimer();
+        updatePhase('idle');
+        setCountdown(0);
+        lockRef.current = false;
+        adOpenRef.current = false;
+        adFailedRef.current = false;
+    }
+
+    function waitFor(fn, timeoutMs) {
+        return new Promise(resolve => {
+            const start = Date.now();
+            const check = () => {
+                if (fn()) return resolve(true);
+                if (Date.now() - start >= timeoutMs) return resolve(false);
+                setTimeout(check, 200);
+            };
+            check();
+        });
+    }
+
+    // এড নেটওয়ার্ক SDK লোড হওয়ার অপেক্ষা — বিজ্ঞাপন লোড হওয়ার আগে
+    // কোনো ব্যাকগ্রাউন্ড টাইমিং/কুলডাউন টাইমিং দেখানো হয় না
+    async function ensureAdLoaded() {
+        if (slot.network === 'monetag') {
+            await waitFor(() => window[`show_${slot.id}`], 10000);
+            return !!window[`show_${slot.id}`];
+        }
+        if (slot.network === 'adsgram') {
+            await waitFor(() => window.Adsgram, 10000);
+            return !!window.Adsgram;
+        }
+        return false;
+    }
+
+    // বিজ্ঞাপন খোলা — Adsgram হলে ক্লোজ/ফেইল রেজাল্ট ট্র্যাক করা হয়
+    function openAd() {
+        return new Promise(resolve => {
+            if (slot.network === 'monetag' && window[`show_${slot.id}`]) {
+                adOpenRef.current = true;
+                adFailedRef.current = false;
+                try { window[`show_${slot.id}`](); } catch {}
+                resolve(true);
+                return;
+            }
+            if (slot.network === 'adsgram' && window.Adsgram) {
+                if (!window.__adsgramControllers) window.__adsgramControllers = {};
+                if (!window.__adsgramControllers[slot.id]) {
+                    window.__adsgramControllers[slot.id] = window.Adsgram.init({ blockId: slot.id });
+                }
+                adOpenRef.current = true;
+                adFailedRef.current = false;
+                window.__adsgramControllers[slot.id].show()
+                    .then(() => { adOpenRef.current = false; })
+                    .catch(() => {
+                        adOpenRef.current = false;
+                        adFailedRef.current = true;
+                        // বিজ্ঞাপন মাঝপথে ব্যর্থ হলে বোনাস দেওয়া হবে না
+                        if (phaseRef.current === 'watching') {
+                            showToastGlobal('error', 'বিজ্ঞাপন সম্পূর্ণ হয়নি। আবার চেষ্টা করুন।');
+                            resetToIdle();
+                        }
+                    });
+                resolve(true);
+                return;
+            }
+            resolve(false);
+        });
     }
 
     async function triggerAd() {
         if (lockRef.current || done >= limit) return;
         lockRef.current = true;
-        tg.HapticFeedback.impactOccurred('light');
+        try { tg.HapticFeedback.impactOccurred('light'); } catch {}
 
-        // বিজ্ঞাপন নেটওয়ার্ক শুরু করুন (যদি লোড করা থাকে) — ব্যাকগ্রাউন্ডে চলে
-        try {
-            if (slot.network === 'monetag' && window[`show_${slot.id}`]) {
-                window[`show_${slot.id}`]();
-            } else if (slot.network === 'adsgram' && window.Adsgram) {
-                if (!window.__adsgramControllers) window.__adsgramControllers = {};
-                if (!window.__adsgramControllers[slot.id]) {
-                    window.__adsgramControllers[slot.id] = window.Adsgram.init({ blockId: slot.id });
+        // বিজ্ঞাপন লোড হওয়া পর্যন্ত শুধু "লোড হচ্ছে" দেখানো হয় —
+        // কাউন্টডাউন বা কুলডাউন টাইমিং একদম দেখানো হয় না
+        updatePhase('loading');
+        setCountdown(0);
+
+        const loaded = await ensureAdLoaded();
+        if (!loaded) {
+            showToastGlobal('error', 'বিজ্ঞাপন লোড হচ্ছে না। আবার চেষ্টা করুন।');
+            resetToIdle();
+            return;
+        }
+
+        const opened = await openAd();
+        if (!opened) {
+            showToastGlobal('error', 'বিজ্ঞাপন দেখানো যাচ্ছে না। আবার চেষ্টা করুন।');
+            resetToIdle();
+            return;
+        }
+
+        // বিজ্ঞাপন চালু হওয়ার সাথে সাথেই ব্যাকগ্রাউন্ড কাউন্টডাউন শুরু
+        updatePhase('watching');
+        startCountdown(WATCH_SECONDS * 1000, () => {
+            // কাউন্টডাউন শেষ, কিন্তু বিজ্ঞাপন এখনো চললে (Adsgram) সেটি
+            // শেষ হওয়ার পরেই বোনাস দেওয়া হয় — বিজ্ঞাপন বেশি সময় নিলে
+            // কাউন্টডাউন কম হলেও বোনাস কখনো হারায় না
+            waitFor(() => !adOpenRef.current || adFailedRef.current, 30000).then(() => {
+                if (adFailedRef.current) {
+                    showToastGlobal('error', 'বিজ্ঞাপন সম্পূর্ণ হয়নি। আবার চেষ্টা করুন।');
+                    resetToIdle();
+                    return;
                 }
-                window.__adsgramControllers[slot.id].show().catch(() => {});
-            }
-        } catch { /* ignore */ }
-
-        // ১৭ সেকেন্ড কাউন্টডাউন — শেষ হলে বোনাস দেওয়া হয়
-        setCooldownSec(nextCooldown(done));
-        setPhase('watching');
-        startCountdown(WATCH_SECONDS, completeWatch);
+                completeWatch();
+            });
+        });
     }
 
     async function completeWatch() {
         try {
             await onAdDone(slot.id);
-            tg.HapticFeedback.notificationOccurred('success');
+            try { tg.HapticFeedback.notificationOccurred('success'); } catch {}
         } catch { /* ignore */ }
 
-        // বোনাস দেওয়ার পরে নির্ধারিত কুলডাউন, তারপর আবার দেখা যাবে
-        setPhase('cooldown');
-        startCountdown(cooldownSec, () => {
-            setPhase('idle');
-            setCountdown(0);
-            lockRef.current = false;
-        });
+        // বোনাস দেওয়ার পরে নির্দিষ্ট কুলডাউন, তারপর আবার দেখা যাবে
+        updatePhase('cooldown');
+        startCountdown(COOLDOWN_SECONDS * 1000, resetToIdle);
     }
 
-    const total = phase === 'watching' ? WATCH_SECONDS : phase === 'cooldown' ? cooldownSec : 0;
+    const total = phase === 'watching' ? WATCH_SECONDS : phase === 'cooldown' ? COOLDOWN_SECONDS : 0;
     const progress = total > 0 ? Math.min(100, Math.round(((total - countdown) / total) * 100)) : 0;
 
     return (
@@ -1070,7 +1166,9 @@ function AdBox({ slot, index, done, limit, onAdDone, sym }) {
             {slot.reward > 0 && <div className="ad-reward">+{slot.reward} {sym || 'টাকা'}</div>}
             <div className="ad-counter">{done}/{limit}</div>
             <button className="ad-btn" onClick={triggerAd} disabled={phase !== 'idle' || done >= limit}>
-                {phase === 'watching' ? (
+                {phase === 'loading' ? (
+                    <><img src={ICONS.rocket} alt="" /> লোড হচ্ছে...</>
+                ) : phase === 'watching' ? (
                     <><img src={ICONS.clock} alt="" /> বোনাস পেতে {countdown}সে</>
                 ) : phase === 'cooldown' ? (
                     <><img src={ICONS.lock} alt="" /> {countdown}সে পর আবার দেখুন</>
