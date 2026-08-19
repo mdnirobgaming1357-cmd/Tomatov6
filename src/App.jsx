@@ -505,6 +505,17 @@ const css = `
     background:var(--surface2); color:var(--text-dim); cursor:not-allowed;
     border:1px solid var(--border); box-shadow:none;
   }
+  .ad-progress {
+    width:100%; height:5px; margin-top:10px;
+    background:rgba(255,255,255,0.06); border-radius:10px; overflow:hidden;
+    border:1px solid rgba(124,108,246,0.15);
+  }
+  .ad-progress-fill {
+    height:100%; border-radius:10px;
+    background:linear-gradient(90deg, var(--grad-b), var(--gold));
+    transition:width 1s linear;
+    box-shadow:0 0 10px rgba(245,198,107,0.4);
+  }
 
   /* ===================== TASKS ===================== */
   .task-list { display:flex; flex-direction:column; gap:10px; }
@@ -972,45 +983,77 @@ function EarnPage({ appState, onAdDone, onTaskBegin }) {
 //  admin-configured `network` + `id` (zone id / block id)
 // ============================================================
 function AdBox({ slot, index, done, limit, onAdDone, sym }) {
-    const [loading, setLoading] = useState(false);
+    const WATCH_SECONDS   = 17;
+    const COOLDOWN_SECONDS = 7;
+
+    const [phase, setPhase] = useState('idle');      // idle | watching | cooldown
+    const [countdown, setCountdown] = useState(0);
+    const timerRef = useRef(null);
     const lockRef = useRef(false);
+
+    function clearTimer() {
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+    }
+
+    useEffect(() => () => clearTimer(), []);
+
+    function startCountdown(total, onDone) {
+        let sec = total;
+        setCountdown(sec);
+        clearTimer();
+        timerRef.current = setInterval(() => {
+            sec--;
+            setCountdown(sec);
+            if (sec <= 0) {
+                clearTimer();
+                onDone();
+            }
+        }, 1000);
+    }
 
     async function triggerAd() {
         if (lockRef.current || done >= limit) return;
-        if (!lockRef.current) {
-            lockRef.current = true;
-            setLoading(true);
-            tg.HapticFeedback.impactOccurred('light');
-            try {
-                let providerFunc;
+        lockRef.current = true;
+        tg.HapticFeedback.impactOccurred('light');
 
-                if (slot.network === 'monetag' && window[`show_${slot.id}`]) {
-                    providerFunc = window[`show_${slot.id}`]();
-
-                } else if (slot.network === 'adsgram' && window.Adsgram) {
-                    if (!window.__adsgramControllers) window.__adsgramControllers = {};
-                    if (!window.__adsgramControllers[slot.id]) {
-                        window.__adsgramControllers[slot.id] = window.Adsgram.init({ blockId: slot.id });
-                    }
-                    providerFunc = window.__adsgramControllers[slot.id].show();
-
-                } else {
-                    alert('বিজ্ঞাপন নেটওয়ার্ক লোড হচ্ছে। আবার চেষ্টা করুন।');
-                    setLoading(false);
-                    lockRef.current = false;
-                    return;
+        // বিজ্ঞাপন নেটওয়ার্ক শুরু করুন (যদি লোড করা থাকে) — ব্যাকগ্রাউন্ডে চলে
+        try {
+            if (slot.network === 'monetag' && window[`show_${slot.id}`]) {
+                window[`show_${slot.id}`]();
+            } else if (slot.network === 'adsgram' && window.Adsgram) {
+                if (!window.__adsgramControllers) window.__adsgramControllers = {};
+                if (!window.__adsgramControllers[slot.id]) {
+                    window.__adsgramControllers[slot.id] = window.Adsgram.init({ blockId: slot.id });
                 }
-                await providerFunc;
-                await onAdDone(slot.id);
-                tg.HapticFeedback.notificationOccurred('success');
-            } catch {
-                // user cancelled
-            } finally {
-                setLoading(false);
-                lockRef.current = false;
+                window.__adsgramControllers[slot.id].show().catch(() => {});
             }
-        }
+        } catch { /* ignore */ }
+
+        // ১৭ সেকেন্ড কাউন্টডাউন — শেষ হলে বোনাস দেওয়া হয়
+        setPhase('watching');
+        startCountdown(WATCH_SECONDS, completeWatch);
     }
+
+    async function completeWatch() {
+        try {
+            await onAdDone(slot.id);
+            tg.HapticFeedback.notificationOccurred('success');
+        } catch { /* ignore */ }
+
+        // বোনাস দেওয়ার পরে ৭ সেকেন্ড কুলডাউন, তারপর আবার দেখা যাবে
+        setPhase('cooldown');
+        startCountdown(COOLDOWN_SECONDS, () => {
+            setPhase('idle');
+            setCountdown(0);
+            lockRef.current = false;
+        });
+    }
+
+    const total = phase === 'watching' ? WATCH_SECONDS : phase === 'cooldown' ? COOLDOWN_SECONDS : 0;
+    const progress = total > 0 ? Math.min(100, Math.round(((total - countdown) / total) * 100)) : 0;
 
     return (
         <div className="ad-box" style={{ animationDelay: `${index * 0.08}s` }}>
@@ -1020,15 +1063,22 @@ function AdBox({ slot, index, done, limit, onAdDone, sym }) {
             <h4>{slot.title || `বিজ্ঞাপন ${index + 1}`}</h4>
             {slot.reward > 0 && <div className="ad-reward">+{slot.reward} {sym || 'টাকা'}</div>}
             <div className="ad-counter">{done}/{limit}</div>
-            <button className="ad-btn" onClick={triggerAd} disabled={loading || lockRef.current || done >= limit}>
-                {loading ? (
-                    <>লোডিং...</>
+            <button className="ad-btn" onClick={triggerAd} disabled={phase !== 'idle' || done >= limit}>
+                {phase === 'watching' ? (
+                    <><img src={ICONS.clock} alt="" /> বোনাস পেতে {countdown}সে</>
+                ) : phase === 'cooldown' ? (
+                    <><img src={ICONS.lock} alt="" /> {countdown}সে পর আবার দেখুন</>
                 ) : done >= limit ? (
                     <><img src={ICONS.lock} alt="" /> সম্পন্ন</>
                 ) : (
                     <><img src={ICONS.bolt} alt="" /> দেখুন</>
                 )}
             </button>
+            {(phase === 'watching' || phase === 'cooldown') && (
+                <div className="ad-progress">
+                    <div className="ad-progress-fill" style={{ width: `${progress}%` }} />
+                </div>
+            )}
         </div>
     );
 }
